@@ -8,8 +8,14 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
-// NewMySQLConnection creates a new MySQL database connection
-func NewMySQLConnection() (*sql.DB, error) {
+// Queries represents the database queries interface
+type Queries struct {
+	*Queries
+	db *sql.DB
+}
+
+// NewMySQLConnection creates a new MySQL database connection with sqlc queries
+func NewMySQLConnection() (*Queries, error) {
 	// Get database configuration from environment variables
 	dbUser := os.Getenv("DB_USER")
 	dbPass := os.Getenv("DB_PASS")
@@ -22,15 +28,26 @@ func NewMySQLConnection() (*sql.DB, error) {
 		dbUser, dbPass, dbHost, dbPort, dbName)
 
 	// Open database connection
-	db, err := sql.Open("mysql", dsn)
+	sqlDB, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("error opening database: %v", err)
 	}
 
 	// Test the connection
-	if err := db.Ping(); err != nil {
+	if err := sqlDB.Ping(); err != nil {
 		return nil, fmt.Errorf("error connecting to database: %v", err)
 	}
 
-	return db, nil
+	// Create queries instance
+	queries := New(sqlDB)
+
+	return &Queries{
+		Queries: queries,
+		db:      sqlDB,
+	}, nil
+}
+
+// Close closes the database connection
+func (q *Queries) Close() error {
+	return q.db.Close()
 }
