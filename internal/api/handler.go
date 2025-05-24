@@ -28,7 +28,34 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	// API version 1 routes
 	apiV1 := router.PathPrefix("/api/v1").Subrouter()
 
-	// Example endpoints
+	// Client APIs
+	apiV1.HandleFunc("/data/upload", UploadClientDataHandler).Methods("POST")
+	apiV1.HandleFunc("/config", GetClientConfigHandler).Methods("GET")
+
+	// Dashboard APIs
+	apiV1.HandleFunc("/metrics/map", GetHeatmapMetricsHandler).Methods("GET")
+	apiV1.HandleFunc("/metrics/table", GetTableMetricsHandler).Methods("GET")
+	apiV1.HandleFunc("/metrics/chart", GetChartMetricsHandler).Methods("GET")
+
+	// Export APIs
+	apiV1.HandleFunc("/export/csv", ExportCSVHandler).Methods("GET")
+	apiV1.HandleFunc("/export/kml", ExportKMLHandler).Methods("GET")
+
+	// Test Definition APIs
+	apiV1.HandleFunc("/tests", ListTestsHandler).Methods("GET")
+	apiV1.HandleFunc("/tests", CreateTestHandler).Methods("POST")
+
+	// Auth APIs
+	apiV1.HandleFunc("/auth/login", LoginHandler).Methods("POST")
+	apiV1.HandleFunc("/auth/me", GetUserProfileHandler).Methods("GET")
+	apiV1.HandleFunc("/auth/logout", LogoutHandler).Methods("POST")
+
+	// User Management APIs
+	apiV1.HandleFunc("/users", ListUsersHandler).Methods("GET")
+	apiV1.HandleFunc("/users", CreateUserHandler).Methods("POST")
+	apiV1.HandleFunc("/users/{id}", DeleteUserHandler).Methods("DELETE")
+
+	// Example endpoints (keeping these for backward compatibility)
 	apiV1.HandleFunc("/users", h.getUsers).Methods("GET")
 	apiV1.HandleFunc("/users", h.createUser).Methods("POST")
 	apiV1.HandleFunc("/users/{id}", h.getUser).Methods("GET")
