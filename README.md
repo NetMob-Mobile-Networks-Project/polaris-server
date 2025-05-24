@@ -10,12 +10,13 @@ A Go server application using MySQL with sqlc for type-safe database operations.
 │   └── api/           # API server entry point
 ├── internal/          # Private application and library code
 │   ├── api/          # API handlers and routes
-│   ├── database/     # Database related code
-│   │   ├── query/    # SQL queries for sqlc
-│   │   │   └── users.sql
-│   │   │   └── schema.sql
-│   │   └── mysql.go  # Database connection and queries wrapper
-│   └── sqlc.yaml     # sqlc configuration
+│   └── database/     # Database related code
+│       ├── query/    # SQL queries for sqlc
+│       │   └── users.sql
+│       ├── schema/   # Database schema
+│       │   └── schema.sql
+│       ├── mysql.go  # Database connection and queries wrapper
+│       └── sqlc.yaml # sqlc configuration
 ├── pkg/              # Library code that's ok to use by external applications
 ├── api/              # OpenAPI/Swagger specs, JSON schema files
 ├── configs/          # Configuration file templates or default configs
@@ -83,7 +84,7 @@ The following queries are available through sqlc:
 To use the database in your code:
 
 ```go
-import "your-module/internal/database"
+import "github.com/themhh/polaris-server/internal/database"
 
 // Create a new database connection
 db, err := database.NewMySQLConnection()

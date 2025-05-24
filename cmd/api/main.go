@@ -7,6 +7,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+
 	"github.com/themhh/polaris-server/internal/api"
 	"github.com/themhh/polaris-server/internal/database"
 )

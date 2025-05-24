@@ -6,16 +6,17 @@ import (
 	"os"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/themhh/polaris-server/internal/database/db"
 )
 
-// Queries represents the database queries interface
-type Queries struct {
-	*Queries
+// DB represents the database connection and queries
+type DB struct {
+	*db.Queries
 	db *sql.DB
 }
 
 // NewMySQLConnection creates a new MySQL database connection with sqlc queries
-func NewMySQLConnection() (*Queries, error) {
+func NewMySQLConnection() (*DB, error) {
 	// Get database configuration from environment variables
 	dbUser := os.Getenv("DB_USER")
 	dbPass := os.Getenv("DB_PASS")
@@ -39,15 +40,15 @@ func NewMySQLConnection() (*Queries, error) {
 	}
 
 	// Create queries instance
-	queries := New(sqlDB)
+	queries := db.New(sqlDB)
 
-	return &Queries{
+	return &DB{
 		Queries: queries,
 		db:      sqlDB,
 	}, nil
 }
 
 // Close closes the database connection
-func (q *Queries) Close() error {
-	return q.db.Close()
+func (db *DB) Close() error {
+	return db.db.Close()
 }
