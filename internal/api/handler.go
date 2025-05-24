@@ -8,19 +8,16 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// Handler represents the API handler
 type Handler struct {
 	db *sql.DB
 }
 
-// NewHandler creates a new API handler
 func NewHandler(db *sql.DB) *Handler {
 	return &Handler{
 		db: db,
 	}
 }
 
-// RegisterRoutes registers all API routes
 func (h *Handler) RegisterRoutes(router *mux.Router) {
 	// Health check endpoint
 	router.HandleFunc("/health", h.healthCheck).Methods("GET")
