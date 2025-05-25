@@ -6,7 +6,7 @@ import (
 
 	"github.com/gorilla/mux"
 
-	"github.com/NetMob-Mobile-Networks-Project/polaris-server/internal/database/database"
+	database "github.com/NetMob-Mobile-Networks-Project/polaris-server/internal/storage"
 )
 
 type Handler struct {
