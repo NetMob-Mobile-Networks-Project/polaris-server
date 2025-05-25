@@ -9,7 +9,7 @@ import (
 	"github.com/joho/godotenv"
 
 	"github.com/NetMob-Mobile-Networks-Project/polaris-server/internal/api"
-	"github.com/NetMob-Mobile-Networks-Project/polaris-server/internal/database"
+	"github.com/NetMob-Mobile-Networks-Project/polaris-server/internal/database/database"
 )
 
 func main() {
