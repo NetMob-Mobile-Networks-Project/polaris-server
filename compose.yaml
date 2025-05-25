@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  polaris-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_USER=root
+      - DB_PASS=secret
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=polaris
+    depends_on:
+      - mysql
+    networks:
+      - polaris-network
+
+  mysql:
+    image: mysql:8
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=secret
+      - MYSQL_DATABASE=polaris
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - polaris-network
+
+networks:
+  polaris-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
