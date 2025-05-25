@@ -6,7 +6,8 @@ import (
 	"os"
 
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/themhh/polaris-server/internal/database/db"
+
+	"github.com/NetMob-Mobile-Networks-Project/polaris-server/internal/database/db"
 )
 
 // DB represents the database connection and queries

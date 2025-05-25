@@ -1,4 +1,4 @@
-module github.com/themhh/polaris-server
+module github.com/NetMob-Mobile-Networks-Project/polaris-server
 
 go 1.23.9
 
