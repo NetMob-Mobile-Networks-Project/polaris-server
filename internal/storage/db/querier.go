@@ -11,7 +11,7 @@ import (
 
 type Querier interface {
 	CreateUser(ctx context.Context, arg CreateUserParams) (sql.Result, error)
-	GetUser(ctx context.Context, id int64) (User, error)
+	GetUser(ctx context.Context, id int32) (User, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
 }
 
