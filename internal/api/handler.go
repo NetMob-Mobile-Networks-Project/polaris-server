@@ -1,18 +1,19 @@
 package api
 
 import (
-	"database/sql"
 	"encoding/json"
 	"net/http"
 
 	"github.com/gorilla/mux"
+
+	"github.com/NetMob-Mobile-Networks-Project/polaris-server/internal/database/database"
 )
 
 type Handler struct {
-	db *sql.DB
+	db *database.DB
 }
 
-func NewHandler(db *sql.DB) *Handler {
+func NewHandler(db *database.DB) *Handler {
 	return &Handler{
 		db: db,
 	}
