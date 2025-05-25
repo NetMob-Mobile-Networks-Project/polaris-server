@@ -7,8 +7,9 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
-	"github.com/themhh/polaris-server/internal/api"
-	"github.com/themhh/polaris-server/internal/database"
+
+	"github.com/NetMob-Mobile-Networks-Project/polaris-server/internal/api"
+	"github.com/NetMob-Mobile-Networks-Project/polaris-server/internal/database"
 )
 
 func main() {
