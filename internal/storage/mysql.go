@@ -3,7 +3,6 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"os"
 
 	_ "github.com/go-sql-driver/mysql"
 
@@ -17,14 +16,7 @@ type DB struct {
 }
 
 // NewMySQLConnection creates a new MySQL database connection with sqlc queries
-func NewMySQLConnection() (*DB, error) {
-	// Get database configuration from environment variables
-	dbUser := os.Getenv("DB_USER")
-	dbPass := os.Getenv("DB_PASS")
-	dbHost := os.Getenv("DB_HOST")
-	dbPort := os.Getenv("DB_PORT")
-	dbName := os.Getenv("DB_NAME")
-
+func NewMySQLConnection(dbUser, dbPass, dbHost, dbPort, dbName string) (*DB, error) {
 	// Construct DSN
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true",
 		dbUser, dbPass, dbHost, dbPort, dbName)

@@ -3,40 +3,37 @@ package main
 import (
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/gorilla/mux"
-	"github.com/joho/godotenv"
 
 	"github.com/NetMob-Mobile-Networks-Project/polaris-server/internal/api"
 	database "github.com/NetMob-Mobile-Networks-Project/polaris-server/internal/storage"
 )
 
 func main() {
-	// Load environment variables
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found")
-	}
+	config := NewConfig()
 
-	// Initialize database connection
-	db, err := database.NewMySQLConnection()
+	db, err := database.NewMySQLConnection(
+		config.DBUser,
+		config.DBPass,
+		config.DBHost,
+		config.DBPort,
+		config.DBName,
+	)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 	defer db.Close()
 
-	// Initialize router
 	router := mux.NewRouter()
 
-	// Initialize API handlers
-	apiHandler := api.NewHandler(db)
+	apiHandler := api.NewHandler(
+		db,
+		config.JWTSecret,
+	)
 	apiHandler.RegisterRoutes(router)
 
-	// Start server
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
+	port := config.Port
 
 	log.Printf("Server starting on port %s", port)
 	if err := http.ListenAndServe(":"+port, router); err != nil {

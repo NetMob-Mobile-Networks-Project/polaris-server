@@ -10,12 +10,14 @@ import (
 )
 
 type Handler struct {
-	db *database.DB
+	db        *database.DB
+	jwtSecret string
 }
 
-func NewHandler(db *database.DB) *Handler {
+func NewHandler(db *database.DB, jwtSecret string) *Handler {
 	return &Handler{
-		db: db,
+		db:        db,
+		jwtSecret: jwtSecret,
 	}
 }
 
