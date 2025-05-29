@@ -7,20 +7,35 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
-    env_file:
-      - .env
+    environment:
+      # Database Configuration
+      - DB_USER=root
+      - DB_PASS=secret
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=polaris
+
+      - SERVER_PORT=8080
+
+      - JWT_SECRET=your-secret-key-here
+      - API_VERSION=v1
     depends_on:
       - mysql
     networks:
       - polaris-network
 
   mysql:
-    image: mysql:8
+    image: registry.docker.ir/mysql:8
     ports:
       - "3306:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=secret
       - MYSQL_DATABASE=polaris
+
+      - MYSQL_CHARACTER_SET_SERVER=utf8mb4
+      - MYSQL_COLLATION_SERVER=utf8mb4_unicode_ci
+      - MYSQL_INNODB_BUFFER_POOL_SIZE=256M
+      - MYSQL_MAX_CONNECTIONS=100
     volumes:
       - mysql-data:/var/lib/mysql
     networks:

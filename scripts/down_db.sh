@@ -1,7 +1,5 @@
 #!/bin/bash
 
-set -e
-
 # Required environment variables: DB_HOST, DB_PORT, DB_USER, DB_PASS, DB_NAME
 : "${DB_HOST:?Need to set DB_HOST}"
 : "${DB_PORT:?Need to set DB_PORT}"

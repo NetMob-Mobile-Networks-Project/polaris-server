@@ -1,5 +1,4 @@
-# Start from the official Golang image
-FROM golang:1.23-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
@@ -22,4 +21,11 @@ COPY internal/storage/schema/ ./internal/storage/schema/
 
 EXPOSE 8080
 
-CMD ["./server"]
+
+RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
+    echo '/app/scripts/setup_db.sh' >> /app/entrypoint.sh && \
+    echo 'exec ./server' >> /app/entrypoint.sh
+
+RUN chmod +x /app/entrypoint.sh
+
+ENTRYPOINT ["sh", "/home/app/entrypoint.sh"]
