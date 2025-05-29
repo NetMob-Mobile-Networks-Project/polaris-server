@@ -1,5 +1,14 @@
 .PHONY: sqlc db-up db-down polaris-server
 
+docker-compose-up:
+	cp .env.example .env
+	set -a
+	source .env
+	docker compose up --build --force-recreate -d
+
+docker-compose-down:
+	docker compose down	-v
+
 sqlc:
 	cd internal/storage && sqlc generate
 
