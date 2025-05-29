@@ -1,7 +1,8 @@
-# Start from the official Golang image
-FROM golang:1.23-alpine AS builder
+FROM golang:1.24-alpine
 
 WORKDIR /app
+
+RUN apk add --no-cache mysql-client
 
 COPY go.mod go.sum ./
 RUN go mod download
@@ -10,22 +11,18 @@ COPY . .
 
 RUN go build -o server ./cmd/polaris-server
 
-
-FROM alpine:latest
-
-WORKDIR /app
-
-COPY --from=builder /app/server .
-
-COPY scripts/ ./scripts/
-COPY internal/storage/schema/ ./internal/storage/schema/
-
-ENV DB_USER=root
-ENV DB_PASS=secret
-ENV DB_HOST=localhost
-ENV DB_PORT=3306
-ENV DB_NAME=polaris
+RUN mkdir -p /app/scripts
+COPY scripts/setup_db.sh /app/scripts/
+COPY scripts/down_db.sh /app/scripts/
+RUN chmod +x /app/scripts/*.sh
 
 EXPOSE 8080
 
-CMD ["./server"]
+RUN echo '#!/bin/sh' > /app/entrypoint.sh && \
+    echo 'cd /app' >> /app/entrypoint.sh && \
+    echo 'sh /app/scripts/setup_db.sh' >> /app/entrypoint.sh && \
+    echo 'exec ./server' >> /app/entrypoint.sh
+
+RUN chmod +x /app/entrypoint.sh
+
+ENTRYPOINT ["sh", "/app/entrypoint.sh"]
