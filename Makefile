@@ -2,8 +2,6 @@
 
 docker-compose-up:
 	cp .env.example .env
-	set -a
-	source .env
 	docker compose up --build --force-recreate -d
 
 docker-compose-down:
