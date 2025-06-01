@@ -36,8 +36,8 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	apiV1.HandleFunc("/dashboard/metrics/map", h.GetHeatmapMetricsHandler).Methods("GET")
 	apiV1.HandleFunc("/dashboard/metrics/table", h.GetTableMetricsHandler).Methods("GET")
 	apiV1.HandleFunc("/dashboard/metrics/chart", h.GetChartMetricsHandler).Methods("GET")
-	apiV1.HandleFunc("/dashboard/getconfig", h.GetConfigHandler).Methods("GET")
-	apiV1.HandleFunc("/dashboard/updateconfig", h.UpdateConfig).Methods("POST")
+	apiV1.HandleFunc("/dashboard/config", h.GetConfigHandler).Methods("GET")
+	apiV1.HandleFunc("/dashboard/update-config", h.UpdateConfig).Methods("POST")
 
 	// Export APIs
 	apiV1.HandleFunc("/export/csv", h.ExportCSVHandler).Methods("GET")
