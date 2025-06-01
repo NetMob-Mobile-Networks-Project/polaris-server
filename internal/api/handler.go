@@ -29,13 +29,15 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	apiV1 := router.PathPrefix("/api/v1").Subrouter()
 
 	// Client APIs
-	apiV1.HandleFunc("/data/upload", h.UploadClientDataHandler).Methods("POST")
-	apiV1.HandleFunc("/config", h.GetClientConfigHandler).Methods("GET")
+	apiV1.HandleFunc("/client/upload", h.UploadClientDataHandler).Methods("POST")
+	apiV1.HandleFunc("/client/config", h.GetClientConfigHandler).Methods("GET")
 
 	// Dashboard APIs
-	apiV1.HandleFunc("/metrics/map", h.GetHeatmapMetricsHandler).Methods("GET")
-	apiV1.HandleFunc("/metrics/table", h.GetTableMetricsHandler).Methods("GET")
-	apiV1.HandleFunc("/metrics/chart", h.GetChartMetricsHandler).Methods("GET")
+	apiV1.HandleFunc("/dashboard/metrics/map", h.GetHeatmapMetricsHandler).Methods("GET")
+	apiV1.HandleFunc("/dashboard/metrics/table", h.GetTableMetricsHandler).Methods("GET")
+	apiV1.HandleFunc("/dashboard/metrics/chart", h.GetChartMetricsHandler).Methods("GET")
+	apiV1.HandleFunc("/dashboard/getconfig", h.GetConfigHandler).Methods("GET")
+	apiV1.HandleFunc("/dashboard/updateconfig", h.UpdateConfig).Methods("POST")
 
 	// Export APIs
 	apiV1.HandleFunc("/export/csv", h.ExportCSVHandler).Methods("GET")
@@ -43,7 +45,6 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 
 	// Auth APIs
 	apiV1.HandleFunc("/auth/login", h.LoginHandler).Methods("POST")
-	apiV1.HandleFunc("/auth/me", h.GetUserProfileHandler).Methods("GET")
 	apiV1.HandleFunc("/auth/logout", h.LogoutHandler).Methods("POST")
 
 	// User Management APIs
