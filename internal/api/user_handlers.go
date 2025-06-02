@@ -4,9 +4,12 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 	"golang.org/x/crypto/bcrypt"
+
+	"github.com/NetMob-Mobile-Networks-Project/polaris-server/internal/storage/db"
 )
 
 // Request/Response structures
@@ -33,8 +36,15 @@ type ListUsersResponse struct {
 	PageSize   int            `json:"page_size"`
 }
 
-// GET /api/users
-// Description: List all users (admin view)
+// convertRole converts string role to db.UsersRole
+func convertRole(role string) db.UsersRole {
+	if role == "admin" {
+		return db.UsersRoleAdmin
+	}
+	return db.UsersRoleUser
+}
+
+// ListUsersHandler returns a paginated list of users
 func (h *Handler) ListUsersHandler(w http.ResponseWriter, r *http.Request) {
 	// Get pagination parameters
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
@@ -47,17 +57,21 @@ func (h *Handler) ListUsersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	offset := (page - 1) * pageSize
 
-	// Get total count
-	totalCount, err := h.db.CountUsers(r.Context())
+	// Get users with pagination
+	params := db.ListUsersParams{
+		Limit:  int32(pageSize),
+		Offset: int32(offset),
+	}
+	users, err := h.db.ListUsers(r.Context(), params)
 	if err != nil {
-		http.Error(w, "Failed to count users", http.StatusInternalServerError)
+		http.Error(w, "Failed to fetch users", http.StatusInternalServerError)
 		return
 	}
 
-	// Get users
-	users, err := h.db.ListUsers(r.Context(), int32(pageSize), int32(offset))
+	// Get total count
+	count, err := h.db.CountUsers(r.Context())
 	if err != nil {
-		http.Error(w, "Failed to fetch users", http.StatusInternalServerError)
+		http.Error(w, "Failed to count users", http.StatusInternalServerError)
 		return
 	}
 
@@ -68,23 +82,22 @@ func (h *Handler) ListUsersHandler(w http.ResponseWriter, r *http.Request) {
 			ID:        int(user.ID),
 			Username:  user.Username,
 			Email:     user.Email,
-			Role:      user.Role,
-			CreatedAt: user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-			UpdatedAt: user.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			Role:      string(user.Role),
+			CreatedAt: user.CreatedAt.Time.Format(time.RFC3339),
+			UpdatedAt: user.UpdatedAt.Time.Format(time.RFC3339),
 		}
 	}
 
 	// Return response
 	json.NewEncoder(w).Encode(ListUsersResponse{
 		Users:      userResponses,
-		TotalCount: totalCount,
+		TotalCount: count,
 		Page:       page,
 		PageSize:   pageSize,
 	})
 }
 
-// POST /api/users
-// Description: Create a new user (admin only)
+// CreateUserHandler creates a new user
 func (h *Handler) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	var req CreateUserRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -99,13 +112,11 @@ func (h *Handler) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate role
-	if req.Role != "admin" && req.Role != "user" {
-		req.Role = "user" // Default to user role
-	}
+	role := convertRole(req.Role)
 
 	// Check if user already exists
-	existingUser, _ := h.db.GetUserByEmail(r.Context(), req.Email)
-	if existingUser != nil {
+	_, err := h.db.GetUserByEmail(r.Context(), req.Email)
+	if err == nil {
 		http.Error(w, "User with this email already exists", http.StatusConflict)
 		return
 	}
@@ -118,26 +129,39 @@ func (h *Handler) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create user
-	user, err := h.db.CreateUser(r.Context(), req.Username, req.Email, string(hashedPassword), req.Role)
+	params := db.CreateUserParams{
+		Username:     req.Username,
+		Email:        req.Email,
+		PasswordHash: string(hashedPassword),
+		Role:         role,
+	}
+
+	err = h.db.CreateUser(r.Context(), params)
 	if err != nil {
 		http.Error(w, "Failed to create user", http.StatusInternalServerError)
 		return
 	}
 
-	// Return created user (without password)
+	// Get the created user
+	user, err := h.db.GetUserByEmail(r.Context(), req.Email)
+	if err != nil {
+		http.Error(w, "Failed to fetch created user", http.StatusInternalServerError)
+		return
+	}
+
+	// Return created user
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(UserResponse{
 		ID:        int(user.ID),
 		Username:  user.Username,
 		Email:     user.Email,
-		Role:      user.Role,
-		CreatedAt: user.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt: user.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		Role:      string(user.Role),
+		CreatedAt: user.CreatedAt.Time.Format(time.RFC3339),
+		UpdatedAt: user.UpdatedAt.Time.Format(time.RFC3339),
 	})
 }
 
-// DELETE /api/users/:id
-// Description: Delete a user account (admin only)
+// DeleteUserHandler deletes a user
 func (h *Handler) DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	// Get user ID from URL
 	vars := mux.Vars(r)
@@ -148,7 +172,7 @@ func (h *Handler) DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if user exists
-	user, err := h.db.GetUserByID(r.Context(), int32(userID))
+	_, err = h.db.GetUserByID(r.Context(), int32(userID))
 	if err != nil {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
