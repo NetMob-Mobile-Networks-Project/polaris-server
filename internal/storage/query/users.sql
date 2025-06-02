@@ -2,7 +2,7 @@
 SELECT * FROM users
 WHERE id = ? LIMIT 1;
 
--- name: CreateUser :one
+-- name: CreateUser :exec
 INSERT INTO users (
     username,
     email,
@@ -10,8 +10,9 @@ INSERT INTO users (
     role
 ) VALUES (
     ?, ?, ?, ?
-)
-RETURNING *;
+);
+-- Follow-up query (if your code supports running multiple statements)
+SELECT * FROM users WHERE id = LAST_INSERT_ID();
 
 -- name: GetUserByID :one
 SELECT * FROM users
@@ -31,15 +32,18 @@ FROM users
 ORDER BY created_at DESC
 LIMIT ? OFFSET ?;
 
--- name: UpdateUser :one
+-- name: UpdateUserExec :exec
 UPDATE users
 SET 
     username = COALESCE(?, username),
     email = COALESCE(?, email),
     password_hash = COALESCE(?, password_hash),
     role = COALESCE(?, role)
-WHERE id = ?
-RETURNING *;
+WHERE id = ?;
+
+-- -- name: GetUserByID :one
+-- SELECT * FROM users WHERE id = ?;
+
 
 -- name: DeleteUser :exec
 DELETE FROM users

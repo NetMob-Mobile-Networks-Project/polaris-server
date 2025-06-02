@@ -6,13 +6,20 @@ package db
 
 import (
 	"context"
-	"database/sql"
 )
 
 type Querier interface {
-	CreateUser(ctx context.Context, arg CreateUserParams) (sql.Result, error)
+	CountUsers(ctx context.Context) (int64, error)
+	CreateUser(ctx context.Context, arg CreateUserParams) error
+	// -- name: GetUserByID :one
+	// SELECT * FROM users WHERE id = ?;
+	DeleteUser(ctx context.Context, id int32) error
 	GetUser(ctx context.Context, id int32) (User, error)
-	ListUsers(ctx context.Context, arg ListUsersParams) ([]User, error)
+	GetUserByEmail(ctx context.Context, email string) (User, error)
+	GetUserByID(ctx context.Context, id int32) (User, error)
+	GetUserByUsername(ctx context.Context, username string) (User, error)
+	ListUsers(ctx context.Context, arg ListUsersParams) ([]ListUsersRow, error)
+	UpdateUserExec(ctx context.Context, arg UpdateUserExecParams) error
 }
 
 var _ Querier = (*Queries)(nil)
