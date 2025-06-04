@@ -36,6 +36,12 @@ type ListUsersResponse struct {
 	PageSize   int            `json:"page_size"`
 }
 
+// Response structures
+type SuccessResponse struct {
+	Message string      `json:"message"`
+	Data    interface{} `json:"data,omitempty"`
+}
+
 // convertRole converts string role to db.UsersRole
 func convertRole(role string) db.UsersRole {
 	if role == "admin" {
@@ -89,11 +95,14 @@ func (h *Handler) ListUsersHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Return response
-	json.NewEncoder(w).Encode(ListUsersResponse{
-		Users:      userResponses,
-		TotalCount: count,
-		Page:       page,
-		PageSize:   pageSize,
+	json.NewEncoder(w).Encode(SuccessResponse{
+		Message: "Users retrieved successfully",
+		Data: ListUsersResponse{
+			Users:      userResponses,
+			TotalCount: count,
+			Page:       page,
+			PageSize:   pageSize,
+		},
 	})
 }
 
@@ -114,8 +123,6 @@ func (h *Handler) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	// Validate role
 	role := convertRole(req.Role)
 
-
-
 	// Check if user already exists
 	_, err := h.db.GetUserByEmail(r.Context(), req.Email)
 	if err == nil {
@@ -123,13 +130,12 @@ func (h *Handler) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	
 	// Check if username already exists
 	_, err = h.db.GetUserByUsername(r.Context(), req.Username)
-    if err == nil {
-        http.Error(w, "Username already exists", http.StatusConflict)
-        return
-    }
+	if err == nil {
+		http.Error(w, "Username already exists", http.StatusConflict)
+		return
+	}
 
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
@@ -161,13 +167,16 @@ func (h *Handler) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Return created user
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(UserResponse{
-		ID:        int(user.ID),
-		Username:  user.Username,
-		Email:     user.Email,
-		Role:      string(user.Role),
-		CreatedAt: user.CreatedAt.Time.Format(time.RFC3339),
-		UpdatedAt: user.UpdatedAt.Time.Format(time.RFC3339),
+	json.NewEncoder(w).Encode(SuccessResponse{
+		Message: "User created successfully",
+		Data: UserResponse{
+			ID:        int(user.ID),
+			Username:  user.Username,
+			Email:     user.Email,
+			Role:      string(user.Role),
+			CreatedAt: user.CreatedAt.Time.Format(time.RFC3339),
+			UpdatedAt: user.UpdatedAt.Time.Format(time.RFC3339),
+		},
 	})
 }
 
@@ -202,5 +211,8 @@ func (h *Handler) DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(SuccessResponse{
+		Message: "User deleted successfully",
+	})
 }
