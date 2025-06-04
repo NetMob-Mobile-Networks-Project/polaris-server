@@ -114,12 +114,22 @@ func (h *Handler) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	// Validate role
 	role := convertRole(req.Role)
 
+
+
 	// Check if user already exists
 	_, err := h.db.GetUserByEmail(r.Context(), req.Email)
 	if err == nil {
 		http.Error(w, "User with this email already exists", http.StatusConflict)
 		return
 	}
+
+	
+	// Check if username already exists
+	_, err = h.db.GetUserByUsername(r.Context(), req.Username)
+    if err == nil {
+        http.Error(w, "Username already exists", http.StatusConflict)
+        return
+    }
 
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
