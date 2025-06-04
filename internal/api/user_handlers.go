@@ -191,28 +191,55 @@ func (h *Handler) DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Check if user exists
-	_, err = h.db.GetUserByID(r.Context(), int32(userID))
-	if err != nil {
+	if _, err := h.db.GetUserByID(r.Context(), int32(userID)); err != nil {
 		http.Error(w, "User not found", http.StatusNotFound)
 		return
 	}
 
-	// Prevent self-deletion
-	currentUserID := r.Context().Value("user_id").(int)
-	if currentUserID == userID {
-		http.Error(w, "Cannot delete your own account", http.StatusForbidden)
+	// ┌──────────────────────────────────────────┐
+	// │   Comment out the “only admin” logic   │
+	// └──────────────────────────────────────────┘
+	/*
+	roleVal := r.Context().Value("user_role")
+	if roleVal == nil {
+		http.Error(w, "Unauthorized (no role)", http.StatusUnauthorized)
 		return
 	}
+	callerRole, ok := roleVal.(string)
+	if !ok {
+		http.Error(w, "Invalid role type", http.StatusInternalServerError)
+		return
+	}
+	if callerRole != "admin" {
+		http.Error(w, "Forbidden: only admins can delete users", http.StatusForbidden)
+		return
+	}
+	*/
+
+	// Optionally also comment out the “cannot delete yourself” check if
+	// you have not populated user_id in context yet:
+	/*
+	idVal := r.Context().Value("user_id")
+	if idVal != nil {
+		callerID, ok := idVal.(int)
+		if ok && callerID == userID {
+			http.Error(w, "Cannot delete your own account", http.StatusForbidden)
+			return
+		}
+	}
+	*/
 
 	// Delete user
-	err = h.db.DeleteUser(r.Context(), int32(userID))
-	if err != nil {
+	if err := h.db.DeleteUser(r.Context(), int32(userID)); err != nil {
 		http.Error(w, "Failed to delete user", http.StatusInternalServerError)
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(SuccessResponse{
 		Message: "User deleted successfully",
 	})
 }
+	
+
