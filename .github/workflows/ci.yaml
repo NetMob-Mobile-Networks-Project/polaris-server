@@ -8,7 +8,7 @@ on:
 
 jobs:
   deploy:
-    # if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' # comment this line to deploy on every push
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
