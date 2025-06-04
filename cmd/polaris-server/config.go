@@ -21,7 +21,7 @@ type Config struct {
 
 func NewConfig() *Config {
 	return &Config{
-		Port:       getEnv("PORT", "8000"),
+		Port:       getEnv("SERVER_PORT", "8080"),
 		DBUser:     getEnv("DB_USER", "root"),
 		DBPass:     getEnv("DB_PASS", "secret"),
 		DBHost:     getEnv("DB_HOST", "localhost"),
