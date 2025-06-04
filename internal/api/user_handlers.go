@@ -196,9 +196,9 @@ func (h *Handler) DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ┌──────────────────────────────────────────┐
-	// │   Comment out the “only admin” logic   │
-	// └──────────────────────────────────────────┘
+
+	// “Only admin” logic    
+
 	/*
 	roleVal := r.Context().Value("user_role")
 	if roleVal == nil {
@@ -216,8 +216,7 @@ func (h *Handler) DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	*/
 
-	// Optionally also comment out the “cannot delete yourself” check if
-	// you have not populated user_id in context yet:
+	// Cannot delete yourself
 	/*
 	idVal := r.Context().Value("user_id")
 	if idVal != nil {
