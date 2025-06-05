@@ -42,9 +42,6 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getUserByIDStmt, err = db.PrepareContext(ctx, getUserByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUserByID: %w", err)
 	}
-	if q.getUserByUsernameStmt, err = db.PrepareContext(ctx, getUserByUsername); err != nil {
-		return nil, fmt.Errorf("error preparing query GetUserByUsername: %w", err)
-	}
 	if q.listUsersStmt, err = db.PrepareContext(ctx, listUsers); err != nil {
 		return nil, fmt.Errorf("error preparing query ListUsers: %w", err)
 	}
@@ -84,11 +81,6 @@ func (q *Queries) Close() error {
 	if q.getUserByIDStmt != nil {
 		if cerr := q.getUserByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getUserByIDStmt: %w", cerr)
-		}
-	}
-	if q.getUserByUsernameStmt != nil {
-		if cerr := q.getUserByUsernameStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getUserByUsernameStmt: %w", cerr)
 		}
 	}
 	if q.listUsersStmt != nil {
@@ -138,31 +130,29 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                    DBTX
-	tx                    *sql.Tx
-	countUsersStmt        *sql.Stmt
-	createUserStmt        *sql.Stmt
-	deleteUserStmt        *sql.Stmt
-	getUserStmt           *sql.Stmt
-	getUserByEmailStmt    *sql.Stmt
-	getUserByIDStmt       *sql.Stmt
-	getUserByUsernameStmt *sql.Stmt
-	listUsersStmt         *sql.Stmt
-	updateUserExecStmt    *sql.Stmt
+	db                 DBTX
+	tx                 *sql.Tx
+	countUsersStmt     *sql.Stmt
+	createUserStmt     *sql.Stmt
+	deleteUserStmt     *sql.Stmt
+	getUserStmt        *sql.Stmt
+	getUserByEmailStmt *sql.Stmt
+	getUserByIDStmt    *sql.Stmt
+	listUsersStmt      *sql.Stmt
+	updateUserExecStmt *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                    tx,
-		tx:                    tx,
-		countUsersStmt:        q.countUsersStmt,
-		createUserStmt:        q.createUserStmt,
-		deleteUserStmt:        q.deleteUserStmt,
-		getUserStmt:           q.getUserStmt,
-		getUserByEmailStmt:    q.getUserByEmailStmt,
-		getUserByIDStmt:       q.getUserByIDStmt,
-		getUserByUsernameStmt: q.getUserByUsernameStmt,
-		listUsersStmt:         q.listUsersStmt,
-		updateUserExecStmt:    q.updateUserExecStmt,
+		db:                 tx,
+		tx:                 tx,
+		countUsersStmt:     q.countUsersStmt,
+		createUserStmt:     q.createUserStmt,
+		deleteUserStmt:     q.deleteUserStmt,
+		getUserStmt:        q.getUserStmt,
+		getUserByEmailStmt: q.getUserByEmailStmt,
+		getUserByIDStmt:    q.getUserByIDStmt,
+		listUsersStmt:      q.listUsersStmt,
+		updateUserExecStmt: q.updateUserExecStmt,
 	}
 }

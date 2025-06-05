@@ -24,9 +24,8 @@ type LoginResponse struct {
 }
 
 type Claims struct {
-	UserID   int32  `json:"user_id"`
-	Username string `json:"username"`
-	Role     string `json:"role"`
+	UserID int32  `json:"user_id"`
+	Role   string `json:"role"`
 	jwt.RegisteredClaims
 }
 
@@ -69,9 +68,8 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	// Create JWT token
 	expirationTime := time.Now().Add(24 * time.Hour)
 	claims := &Claims{
-		UserID:   user.ID,
-		Username: user.Username,
-		Role:     string(user.Role),
+		UserID: user.ID,
+		Role:   string(user.Role),
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -93,7 +91,6 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		Token: tokenString,
 		User: UserResponse{
 			ID:        int(user.ID),
-			Username:  user.Username,
 			Email:     user.Email,
 			Role:      string(user.Role),
 			CreatedAt: formatTime(user.CreatedAt),
@@ -124,7 +121,6 @@ func (h *Handler) GetUserProfileHandler(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(UserResponse{
 		ID:        int(user.ID),
-		Username:  user.Username,
 		Email:     user.Email,
 		Role:      string(user.Role),
 		CreatedAt: formatTime(user.CreatedAt),
@@ -162,11 +158,9 @@ func (h *Handler) AuthMiddleware(next http.Handler) http.Handler {
 		// Add user info to context
 		ctx := r.Context()
 		ctx = context.WithValue(ctx, "user_id", claims.UserID)
-		ctx = context.WithValue(ctx, "username", claims.Username)
 		ctx = context.WithValue(ctx, "user_role", claims.Role)
 
 		// Call next handler with updated context
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
-
