@@ -1,9 +1,12 @@
 package api
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -531,17 +534,48 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 
 // POST /api/v1/tests/http/upload
 func (h *Handler) UploadHttpTestsHandler(w http.ResponseWriter, r *http.Request) {
+	// Add panic recovery
+	defer func() {
+		if err := recover(); err != nil {
+			log.Printf("Panic in UploadHttpTestsHandler: %v", err)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:  "error",
+				Message: "Internal server error",
+			})
+		}
+	}()
+
 	var req struct {
 		DeviceID string           `json:"device_id"`
 		Results  []HttpTestResult `json:"results"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	// Log the incoming request body for debugging
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Error reading request body: %v", err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(UploadResponse{
 			Status:  "error",
-			Message: "Invalid request body",
+			Message: "Error reading request body",
+		})
+		return
+	}
+	log.Printf("Received HTTP test upload request: %s", string(body))
+
+	// Create a new reader with the body for json.Decoder
+	r.Body = io.NopCloser(bytes.NewBuffer(body))
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("Error decoding request body: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
+			Message: fmt.Sprintf("Invalid request body: %v", err),
 		})
 		return
 	}
@@ -570,6 +604,9 @@ func (h *Handler) UploadHttpTestsHandler(w http.ResponseWriter, r *http.Request)
 	hasErrors := false
 
 	for i, result := range req.Results {
+		// Log each result for debugging
+		log.Printf("Processing HTTP test result %d: %+v", i+1, result)
+
 		// Validate test type
 		if result.Type != "DOWNLOAD" && result.Type != "UPLOAD" {
 			hasErrors = true
@@ -648,26 +685,41 @@ func (h *Handler) UploadHttpTestsHandler(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
+		// Create database parameters with nil checks
 		params := db.CreateHttpTestResultParams{
-			DeviceID:         req.DeviceID,
-			Timestamp:        time.Unix(result.Timestamp, 0),
-			Success:          result.Success,
-			ErrorMessage:     sql.NullString{String: *result.ErrorMessage, Valid: result.ErrorMessage != nil},
-			TestType:         db.HttpTestResultsTestType(result.Type),
-			Url:              result.URL,
-			BytesTransferred: sql.NullInt64{Int64: *result.BytesTransferred, Valid: result.BytesTransferred != nil},
-			DurationMillis:   sql.NullInt64{Int64: *result.DurationMillis, Valid: result.DurationMillis != nil},
-			ThroughputKbps:   sql.NullString{String: strconv.FormatFloat(*result.ThroughputKbps, 'f', 2, 64), Valid: result.ThroughputKbps != nil},
+			DeviceID:  req.DeviceID,
+			Timestamp: time.Unix(result.Timestamp, 0),
+			Success:   result.Success,
+			TestType:  db.HttpTestResultsTestType(result.Type),
+			Url:       result.URL,
 		}
+
+		// Set optional fields with nil checks
+		if result.ErrorMessage != nil {
+			params.ErrorMessage = sql.NullString{String: *result.ErrorMessage, Valid: true}
+		}
+		if result.BytesTransferred != nil {
+			params.BytesTransferred = sql.NullInt64{Int64: *result.BytesTransferred, Valid: true}
+		}
+		if result.DurationMillis != nil {
+			params.DurationMillis = sql.NullInt64{Int64: *result.DurationMillis, Valid: true}
+		}
+		if result.ThroughputKbps != nil {
+			params.ThroughputKbps = sql.NullString{String: strconv.FormatFloat(*result.ThroughputKbps, 'f', 2, 64), Valid: true}
+		}
+
+		// Log the database parameters for debugging
+		log.Printf("Creating HTTP test result with params: %+v", params)
 
 		_, err := h.db.CreateHttpTestResult(r.Context(), params)
 		if err != nil {
+			log.Printf("Error creating HTTP test result: %v", err)
 			hasErrors = true
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(UploadResponse{
 				Status:           "partial_success",
-				Message:          "Failed to store HTTP test result",
+				Message:          fmt.Sprintf("Failed to store HTTP test result: %v", err),
 				RecordsProcessed: &processedCount,
 			})
 			return
@@ -681,6 +733,8 @@ func (h *Handler) UploadHttpTestsHandler(w http.ResponseWriter, r *http.Request)
 	if hasErrors {
 		status = "partial_success"
 	}
+
+	log.Printf("Successfully processed %d HTTP test results", processedCount)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(UploadResponse{
