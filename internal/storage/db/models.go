@@ -12,6 +12,48 @@ import (
 	"time"
 )
 
+type HttpTestResultsTestType string
+
+const (
+	HttpTestResultsTestTypeDOWNLOAD HttpTestResultsTestType = "DOWNLOAD"
+	HttpTestResultsTestTypeUPLOAD   HttpTestResultsTestType = "UPLOAD"
+)
+
+func (e *HttpTestResultsTestType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = HttpTestResultsTestType(s)
+	case string:
+		*e = HttpTestResultsTestType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for HttpTestResultsTestType: %T", src)
+	}
+	return nil
+}
+
+type NullHttpTestResultsTestType struct {
+	HttpTestResultsTestType HttpTestResultsTestType `json:"http_test_results_test_type"`
+	Valid                   bool                    `json:"valid"` // Valid is true if HttpTestResultsTestType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullHttpTestResultsTestType) Scan(value interface{}) error {
+	if value == nil {
+		ns.HttpTestResultsTestType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.HttpTestResultsTestType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullHttpTestResultsTestType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.HttpTestResultsTestType), nil
+}
+
 type UsersRole string
 
 const (
@@ -58,9 +100,34 @@ type ClientConfig struct {
 	ID                      int32           `json:"id"`
 	SamplingIntervalSeconds int32           `json:"sampling_interval_seconds"`
 	TestTypes               json.RawMessage `json:"test_types"`
-	Thresholds              json.RawMessage `json:"thresholds"`
 	CreatedAt               sql.NullTime    `json:"created_at"`
 	UpdatedAt               sql.NullTime    `json:"updated_at"`
+}
+
+type DnsTestResult struct {
+	ID                   int32           `json:"id"`
+	DeviceID             string          `json:"device_id"`
+	Timestamp            time.Time       `json:"timestamp"`
+	Success              bool            `json:"success"`
+	ErrorMessage         sql.NullString  `json:"error_message"`
+	Hostname             string          `json:"hostname"`
+	ResolutionTimeMillis sql.NullInt64   `json:"resolution_time_millis"`
+	ResolvedIpAddresses  json.RawMessage `json:"resolved_ip_addresses"`
+	CreatedAt            sql.NullTime    `json:"created_at"`
+}
+
+type HttpTestResult struct {
+	ID               int32                   `json:"id"`
+	DeviceID         string                  `json:"device_id"`
+	Timestamp        time.Time               `json:"timestamp"`
+	Success          bool                    `json:"success"`
+	ErrorMessage     sql.NullString          `json:"error_message"`
+	TestType         HttpTestResultsTestType `json:"test_type"`
+	Url              string                  `json:"url"`
+	BytesTransferred sql.NullInt64           `json:"bytes_transferred"`
+	DurationMillis   sql.NullInt64           `json:"duration_millis"`
+	ThroughputKbps   sql.NullString          `json:"throughput_kbps"`
+	CreatedAt        sql.NullTime            `json:"created_at"`
 }
 
 type Measurement struct {
@@ -89,6 +156,55 @@ type Measurement struct {
 	CreatedAt     sql.NullTime   `json:"created_at"`
 }
 
+type NetworkMeasurement struct {
+	ID                    int32           `json:"id"`
+	DeviceID              string          `json:"device_id"`
+	Timestamp             time.Time       `json:"timestamp"`
+	Latitude              sql.NullString  `json:"latitude"`
+	Longitude             sql.NullString  `json:"longitude"`
+	CellularTechnology    sql.NullString  `json:"cellular_technology"`
+	NetworkOperatorName   sql.NullString  `json:"network_operator_name"`
+	NetworkOperatorMccmnc sql.NullString  `json:"network_operator_mccmnc"`
+	Lac                   sql.NullInt32   `json:"lac"`
+	Rac                   sql.NullInt32   `json:"rac"`
+	Tac                   sql.NullInt32   `json:"tac"`
+	CellID                sql.NullInt64   `json:"cell_id"`
+	Arfcn                 sql.NullInt32   `json:"arfcn"`
+	SignalStrength        sql.NullInt32   `json:"signal_strength"`
+	SignalQuality         sql.NullInt32   `json:"signal_quality"`
+	AdditionalParams      json.RawMessage `json:"additional_params"`
+	CreatedAt             sql.NullTime    `json:"created_at"`
+}
+
+type PingTestResult struct {
+	ID                 int32           `json:"id"`
+	DeviceID           string          `json:"device_id"`
+	Timestamp          time.Time       `json:"timestamp"`
+	Success            bool            `json:"success"`
+	ErrorMessage       sql.NullString  `json:"error_message"`
+	Host               string          `json:"host"`
+	PacketsTransmitted sql.NullInt32   `json:"packets_transmitted"`
+	PacketsReceived    sql.NullInt32   `json:"packets_received"`
+	MinRttMillis       sql.NullFloat64 `json:"min_rtt_millis"`
+	AvgRttMillis       sql.NullFloat64 `json:"avg_rtt_millis"`
+	MaxRttMillis       sql.NullFloat64 `json:"max_rtt_millis"`
+	IpAddress          sql.NullString  `json:"ip_address"`
+	CreatedAt          sql.NullTime    `json:"created_at"`
+}
+
+type SmsTestResult struct {
+	ID                   int32          `json:"id"`
+	DeviceID             string         `json:"device_id"`
+	Timestamp            time.Time      `json:"timestamp"`
+	Success              bool           `json:"success"`
+	ErrorMessage         sql.NullString `json:"error_message"`
+	DestinationAddress   string         `json:"destination_address"`
+	SubmissionTimeMillis sql.NullInt64  `json:"submission_time_millis"`
+	DeliveryTimeMillis   sql.NullInt64  `json:"delivery_time_millis"`
+	DurationMillis       sql.NullInt64  `json:"duration_millis"`
+	CreatedAt            sql.NullTime   `json:"created_at"`
+}
+
 type User struct {
 	ID           int32        `json:"id"`
 	Email        string       `json:"email"`
@@ -96,4 +212,17 @@ type User struct {
 	Role         UsersRole    `json:"role"`
 	CreatedAt    sql.NullTime `json:"created_at"`
 	UpdatedAt    sql.NullTime `json:"updated_at"`
+}
+
+type WebTestResult struct {
+	ID                int32          `json:"id"`
+	DeviceID          string         `json:"device_id"`
+	Timestamp         time.Time      `json:"timestamp"`
+	Success           bool           `json:"success"`
+	ErrorMessage      sql.NullString `json:"error_message"`
+	Url               string         `json:"url"`
+	LoadingTimeMillis sql.NullInt64  `json:"loading_time_millis"`
+	ResponseCode      sql.NullInt32  `json:"response_code"`
+	PageSizeBytes     sql.NullInt64  `json:"page_size_bytes"`
+	CreatedAt         sql.NullTime   `json:"created_at"`
 }

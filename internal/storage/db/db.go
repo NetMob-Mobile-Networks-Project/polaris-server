@@ -30,11 +30,29 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.countUsersStmt, err = db.PrepareContext(ctx, countUsers); err != nil {
 		return nil, fmt.Errorf("error preparing query CountUsers: %w", err)
 	}
+	if q.createDnsTestResultStmt, err = db.PrepareContext(ctx, createDnsTestResult); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateDnsTestResult: %w", err)
+	}
+	if q.createHttpTestResultStmt, err = db.PrepareContext(ctx, createHttpTestResult); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateHttpTestResult: %w", err)
+	}
 	if q.createMeasurementStmt, err = db.PrepareContext(ctx, createMeasurement); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateMeasurement: %w", err)
 	}
+	if q.createNetworkMeasurementStmt, err = db.PrepareContext(ctx, createNetworkMeasurement); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateNetworkMeasurement: %w", err)
+	}
+	if q.createPingTestResultStmt, err = db.PrepareContext(ctx, createPingTestResult); err != nil {
+		return nil, fmt.Errorf("error preparing query CreatePingTestResult: %w", err)
+	}
+	if q.createSmsTestResultStmt, err = db.PrepareContext(ctx, createSmsTestResult); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateSmsTestResult: %w", err)
+	}
 	if q.createUserStmt, err = db.PrepareContext(ctx, createUser); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateUser: %w", err)
+	}
+	if q.createWebTestResultStmt, err = db.PrepareContext(ctx, createWebTestResult); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateWebTestResult: %w", err)
 	}
 	if q.deleteUserStmt, err = db.PrepareContext(ctx, deleteUser); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteUser: %w", err)
@@ -81,14 +99,44 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing countUsersStmt: %w", cerr)
 		}
 	}
+	if q.createDnsTestResultStmt != nil {
+		if cerr := q.createDnsTestResultStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createDnsTestResultStmt: %w", cerr)
+		}
+	}
+	if q.createHttpTestResultStmt != nil {
+		if cerr := q.createHttpTestResultStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createHttpTestResultStmt: %w", cerr)
+		}
+	}
 	if q.createMeasurementStmt != nil {
 		if cerr := q.createMeasurementStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing createMeasurementStmt: %w", cerr)
 		}
 	}
+	if q.createNetworkMeasurementStmt != nil {
+		if cerr := q.createNetworkMeasurementStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createNetworkMeasurementStmt: %w", cerr)
+		}
+	}
+	if q.createPingTestResultStmt != nil {
+		if cerr := q.createPingTestResultStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createPingTestResultStmt: %w", cerr)
+		}
+	}
+	if q.createSmsTestResultStmt != nil {
+		if cerr := q.createSmsTestResultStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createSmsTestResultStmt: %w", cerr)
+		}
+	}
 	if q.createUserStmt != nil {
 		if cerr := q.createUserStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing createUserStmt: %w", cerr)
+		}
+	}
+	if q.createWebTestResultStmt != nil {
+		if cerr := q.createWebTestResultStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createWebTestResultStmt: %w", cerr)
 		}
 	}
 	if q.deleteUserStmt != nil {
@@ -178,41 +226,53 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                     DBTX
-	tx                     *sql.Tx
-	countMeasurementsStmt  *sql.Stmt
-	countUsersStmt         *sql.Stmt
-	createMeasurementStmt  *sql.Stmt
-	createUserStmt         *sql.Stmt
-	deleteUserStmt         *sql.Stmt
-	getClientConfigStmt    *sql.Stmt
-	getMeasurementStmt     *sql.Stmt
-	getUserStmt            *sql.Stmt
-	getUserByEmailStmt     *sql.Stmt
-	getUserByIDStmt        *sql.Stmt
-	listMeasurementsStmt   *sql.Stmt
-	listUsersStmt          *sql.Stmt
-	updateClientConfigStmt *sql.Stmt
-	updateUserExecStmt     *sql.Stmt
+	db                           DBTX
+	tx                           *sql.Tx
+	countMeasurementsStmt        *sql.Stmt
+	countUsersStmt               *sql.Stmt
+	createDnsTestResultStmt      *sql.Stmt
+	createHttpTestResultStmt     *sql.Stmt
+	createMeasurementStmt        *sql.Stmt
+	createNetworkMeasurementStmt *sql.Stmt
+	createPingTestResultStmt     *sql.Stmt
+	createSmsTestResultStmt      *sql.Stmt
+	createUserStmt               *sql.Stmt
+	createWebTestResultStmt      *sql.Stmt
+	deleteUserStmt               *sql.Stmt
+	getClientConfigStmt          *sql.Stmt
+	getMeasurementStmt           *sql.Stmt
+	getUserStmt                  *sql.Stmt
+	getUserByEmailStmt           *sql.Stmt
+	getUserByIDStmt              *sql.Stmt
+	listMeasurementsStmt         *sql.Stmt
+	listUsersStmt                *sql.Stmt
+	updateClientConfigStmt       *sql.Stmt
+	updateUserExecStmt           *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                     tx,
-		tx:                     tx,
-		countMeasurementsStmt:  q.countMeasurementsStmt,
-		countUsersStmt:         q.countUsersStmt,
-		createMeasurementStmt:  q.createMeasurementStmt,
-		createUserStmt:         q.createUserStmt,
-		deleteUserStmt:         q.deleteUserStmt,
-		getClientConfigStmt:    q.getClientConfigStmt,
-		getMeasurementStmt:     q.getMeasurementStmt,
-		getUserStmt:            q.getUserStmt,
-		getUserByEmailStmt:     q.getUserByEmailStmt,
-		getUserByIDStmt:        q.getUserByIDStmt,
-		listMeasurementsStmt:   q.listMeasurementsStmt,
-		listUsersStmt:          q.listUsersStmt,
-		updateClientConfigStmt: q.updateClientConfigStmt,
-		updateUserExecStmt:     q.updateUserExecStmt,
+		db:                           tx,
+		tx:                           tx,
+		countMeasurementsStmt:        q.countMeasurementsStmt,
+		countUsersStmt:               q.countUsersStmt,
+		createDnsTestResultStmt:      q.createDnsTestResultStmt,
+		createHttpTestResultStmt:     q.createHttpTestResultStmt,
+		createMeasurementStmt:        q.createMeasurementStmt,
+		createNetworkMeasurementStmt: q.createNetworkMeasurementStmt,
+		createPingTestResultStmt:     q.createPingTestResultStmt,
+		createSmsTestResultStmt:      q.createSmsTestResultStmt,
+		createUserStmt:               q.createUserStmt,
+		createWebTestResultStmt:      q.createWebTestResultStmt,
+		deleteUserStmt:               q.deleteUserStmt,
+		getClientConfigStmt:          q.getClientConfigStmt,
+		getMeasurementStmt:           q.getMeasurementStmt,
+		getUserStmt:                  q.getUserStmt,
+		getUserByEmailStmt:           q.getUserByEmailStmt,
+		getUserByIDStmt:              q.getUserByIDStmt,
+		listMeasurementsStmt:         q.listMeasurementsStmt,
+		listUsersStmt:                q.listUsersStmt,
+		updateClientConfigStmt:       q.updateClientConfigStmt,
+		updateUserExecStmt:           q.updateUserExecStmt,
 	}
 }

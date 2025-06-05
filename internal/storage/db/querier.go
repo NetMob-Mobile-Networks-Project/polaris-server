@@ -12,8 +12,14 @@ import (
 type Querier interface {
 	CountMeasurements(ctx context.Context, arg CountMeasurementsParams) (int64, error)
 	CountUsers(ctx context.Context) (int64, error)
+	CreateDnsTestResult(ctx context.Context, arg CreateDnsTestResultParams) (sql.Result, error)
+	CreateHttpTestResult(ctx context.Context, arg CreateHttpTestResultParams) (sql.Result, error)
 	CreateMeasurement(ctx context.Context, arg CreateMeasurementParams) (sql.Result, error)
+	CreateNetworkMeasurement(ctx context.Context, arg CreateNetworkMeasurementParams) (sql.Result, error)
+	CreatePingTestResult(ctx context.Context, arg CreatePingTestResultParams) (sql.Result, error)
+	CreateSmsTestResult(ctx context.Context, arg CreateSmsTestResultParams) (sql.Result, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) error
+	CreateWebTestResult(ctx context.Context, arg CreateWebTestResultParams) (sql.Result, error)
 	// -- name: GetUserByID :one
 	// SELECT * FROM users WHERE id = ?;
 	DeleteUser(ctx context.Context, id int32) error

@@ -19,82 +19,132 @@ type Response struct {
 
 // Client configuration structures
 type ClientConfigResponse struct {
-	SamplingIntervalSeconds int                       `json:"sampling_interval_seconds"`
-	TestTypes               []string                  `json:"test_types"`
-	Thresholds              map[string]ThresholdRange `json:"thresholds"`
-}
-
-type ThresholdRange struct {
-	Min float64 `json:"min"`
-	Max float64 `json:"max"`
-}
-
-// Measurement structures
-type MeasurementRequest struct {
-	Timestamp     time.Time `json:"timestamp"`
-	Latitude      float64   `json:"latitude"`
-	Longitude     float64   `json:"longitude"`
-	NetworkType   string    `json:"network_type"`
-	PLMNID        *string   `json:"plmn_id,omitempty"`
-	LAC           *string   `json:"lac,omitempty"`
-	TAC           *string   `json:"tac,omitempty"`
-	CellID        *string   `json:"cell_id,omitempty"`
-	ARFCN         *int32    `json:"arfcn,omitempty"`
-	FrequencyBand *string   `json:"frequency_band,omitempty"`
-	RSSI          *int32    `json:"rssi,omitempty"`
-	EcNo          *float64  `json:"ec_no,omitempty"`
-	RSCP          *int32    `json:"rscp,omitempty"`
-	RSRQ          *float64  `json:"rsrq,omitempty"`
-	RSRP          *int32    `json:"rsrp,omitempty"`
-	DownloadSpeed *float64  `json:"download_speed,omitempty"`
-	UploadSpeed   *float64  `json:"upload_speed,omitempty"`
-	PingMS        *int32    `json:"ping_ms,omitempty"`
-	DNSMS         *int32    `json:"dns_ms,omitempty"`
-	HTTPLatencyMS *int32    `json:"http_latency_ms,omitempty"`
-	SMSDeliveryMS *int32    `json:"sms_delivery_ms,omitempty"`
-}
-
-type MeasurementResponse struct {
-	ID int64 `json:"id"`
+	SamplingIntervalSeconds int      `json:"sampling_interval_seconds"`
+	TestTypes               []string `json:"test_types"`
 }
 
 // Request structure for updating client configuration
 type UpdateConfigRequest struct {
-	SamplingIntervalSeconds int                       `json:"sampling_interval_seconds" validate:"required,min=60,max=3600"` // 1 minute to 1 hour
-	TestTypes               []string                  `json:"test_types" validate:"required,min=1,dive,oneof=signal_strength download_speed upload_speed ping dns http sms"`
-	Thresholds              map[string]ThresholdRange `json:"thresholds" validate:"required,min=1,dive"`
+	SamplingIntervalSeconds int      `json:"sampling_interval_seconds" validate:"required,min=60,max=3600"`
+	TestTypes               []string `json:"test_types" validate:"required,min=1,dive,oneof=http ping dns web sms"`
 }
 
-// GET /api/config
-// Description: Client fetches test configuration (intervals, test types, thresholds)
-// Response: JSON with success status, message, and config data
+// Network measurement structures
+type NetworkDataUploadRequest struct {
+	DeviceID     string               `json:"device_id"`
+	Measurements []NetworkMeasurement `json:"measurements"`
+}
+
+type NetworkMeasurement struct {
+	ID                    *int64            `json:"id,omitempty"`
+	Timestamp             int64             `json:"timestamp"`
+	Latitude              *float64          `json:"latitude,omitempty"`
+	Longitude             *float64          `json:"longitude,omitempty"`
+	CellularTechnology    *string           `json:"cellular_technology,omitempty"`
+	NetworkOperatorName   *string           `json:"network_operator_name,omitempty"`
+	NetworkOperatorMCCMNC *string           `json:"network_operator_mccmnc,omitempty"`
+	LAC                   *int32            `json:"lac,omitempty"`
+	RAC                   *int32            `json:"rac,omitempty"`
+	TAC                   *int32            `json:"tac,omitempty"`
+	CellID                *int64            `json:"cell_id,omitempty"`
+	ARFCN                 *int32            `json:"arfcn,omitempty"`
+	SignalStrength        *int32            `json:"signal_strength,omitempty"`
+	SignalQuality         *int32            `json:"signal_quality,omitempty"`
+	AdditionalParams      map[string]string `json:"additional_params,omitempty"`
+}
+
+// Test result structures
+type TestResultUploadRequest struct {
+	DeviceID string      `json:"device_id"`
+	Results  interface{} `json:"results"` // Will be one of the test result types
+}
+
+type HttpTestResult struct {
+	ID               *int64   `json:"id,omitempty"`
+	Timestamp        int64    `json:"timestamp"`
+	Success          bool     `json:"success"`
+	ErrorMessage     *string  `json:"error_message,omitempty"`
+	Type             string   `json:"type"` // "DOWNLOAD" or "UPLOAD"
+	URL              string   `json:"url"`
+	BytesTransferred *int64   `json:"bytes_transferred,omitempty"`
+	DurationMillis   *int64   `json:"duration_millis,omitempty"`
+	ThroughputKbps   *float64 `json:"throughput_kbps,omitempty"`
+}
+
+type PingTestResult struct {
+	ID                 *int64   `json:"id,omitempty"`
+	Timestamp          int64    `json:"timestamp"`
+	Success            bool     `json:"success"`
+	ErrorMessage       *string  `json:"error_message,omitempty"`
+	Host               string   `json:"host"`
+	PacketsTransmitted *int32   `json:"packets_transmitted,omitempty"`
+	PacketsReceived    *int32   `json:"packets_received,omitempty"`
+	MinRttMillis       *float64 `json:"min_rtt_millis,omitempty"`
+	AvgRttMillis       *float64 `json:"avg_rtt_millis,omitempty"`
+	MaxRttMillis       *float64 `json:"max_rtt_millis,omitempty"`
+	IPAddress          *string  `json:"ip_address,omitempty"`
+}
+
+type DnsTestResult struct {
+	ID                   *int64   `json:"id,omitempty"`
+	Timestamp            int64    `json:"timestamp"`
+	Success              bool     `json:"success"`
+	ErrorMessage         *string  `json:"error_message,omitempty"`
+	Hostname             string   `json:"hostname"`
+	ResolutionTimeMillis *int64   `json:"resolution_time_millis,omitempty"`
+	ResolvedIPAddresses  []string `json:"resolved_ip_addresses,omitempty"`
+}
+
+type WebTestResult struct {
+	ID                *int64  `json:"id,omitempty"`
+	Timestamp         int64   `json:"timestamp"`
+	Success           bool    `json:"success"`
+	ErrorMessage      *string `json:"error_message,omitempty"`
+	URL               string  `json:"url"`
+	LoadingTimeMillis *int64  `json:"loading_time_millis,omitempty"`
+	ResponseCode      *int32  `json:"response_code,omitempty"`
+	PageSizeBytes     *int64  `json:"page_size_bytes,omitempty"`
+}
+
+type SmsTestResult struct {
+	ID                   *int64  `json:"id,omitempty"`
+	Timestamp            int64   `json:"timestamp"`
+	Success              bool    `json:"success"`
+	ErrorMessage         *string `json:"error_message,omitempty"`
+	DestinationAddress   string  `json:"destination_address"`
+	SubmissionTimeMillis *int64  `json:"submission_time_millis,omitempty"`
+	DeliveryTimeMillis   *int64  `json:"delivery_time_millis,omitempty"`
+	DurationMillis       *int64  `json:"duration_millis,omitempty"`
+}
+
+type UploadResponse struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+	ID      int64  `json:"id,omitempty"`
+}
+
+// GET /api/v1/config
 func (h *Handler) GetClientConfigHandler(w http.ResponseWriter, r *http.Request) {
 	config, err := h.db.GetClientConfig(r.Context())
 	if err != nil {
 		defaultConfig := ClientConfigResponse{
 			SamplingIntervalSeconds: 300,
 			TestTypes: []string{
-				"signal_strength", "download_speed", "upload_speed", "ping", "dns", "http", "sms",
-			},
-			Thresholds: map[string]ThresholdRange{
-				"signal_strength": {Min: -90, Max: -50},
-				"download_speed":  {Min: 1, Max: 100},
-				"upload_speed":    {Min: 1, Max: 50},
-				"ping":            {Min: 0, Max: 100},
-				"dns":             {Min: 0, Max: 200},
-				"http":            {Min: 0, Max: 500},
-				"sms":             {Min: 0, Max: 1000},
+				"http", "ping", "dns", "web", "sms",
 			},
 		}
 		testTypesJSON, _ := json.Marshal(defaultConfig.TestTypes)
-		thresholdsJSON, _ := json.Marshal(defaultConfig.Thresholds)
 		err = h.db.UpdateClientConfig(r.Context(), db.UpdateClientConfigParams{
 			SamplingIntervalSeconds: int32(defaultConfig.SamplingIntervalSeconds),
 			TestTypes:               testTypesJSON,
-			Thresholds:              thresholdsJSON,
 		})
 		if err != nil {
-			http.Error(w, "Failed to store default config", http.StatusInternalServerError)
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(Response{
+				Success: false,
+				Message: "Failed to store default config",
+			})
 			return
 		}
 		w.Header().Set("Content-Type", "application/json")
@@ -106,13 +156,10 @@ func (h *Handler) GetClientConfigHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	var testTypes []string
-	var thresholds map[string]ThresholdRange
 	json.Unmarshal([]byte(config.TestTypes), &testTypes)
-	json.Unmarshal([]byte(config.Thresholds), &thresholds)
 	configResponse := ClientConfigResponse{
 		SamplingIntervalSeconds: int(config.SamplingIntervalSeconds),
 		TestTypes:               testTypes,
-		Thresholds:              thresholds,
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(Response{
@@ -122,121 +169,7 @@ func (h *Handler) GetClientConfigHandler(w http.ResponseWriter, r *http.Request)
 	})
 }
 
-func toNullString(s *string) sql.NullString {
-	if s != nil {
-		return sql.NullString{String: *s, Valid: true}
-	}
-	return sql.NullString{}
-}
-func toNullInt32(i *int32) sql.NullInt32 {
-	if i != nil {
-		return sql.NullInt32{Int32: *i, Valid: true}
-	}
-	return sql.NullInt32{}
-}
-func toNullFloatString(f *float64) sql.NullString {
-	if f != nil {
-		return sql.NullString{String: strconv.FormatFloat(*f, 'f', -1, 64), Valid: true}
-	}
-	return sql.NullString{}
-}
-
-// POST /api/data/upload
-// Description: Client uploads telemetry and test results
-// Body: JSON with timestamp, location, signal strength, network type, test results
-// Auth: Optional token
-func (h *Handler) UploadClientDataHandler(w http.ResponseWriter, r *http.Request) {
-	var req MeasurementRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(Response{
-			Success: false,
-			Message: "Invalid request body",
-		})
-		return
-	}
-	if req.Timestamp.IsZero() {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(Response{
-			Success: false,
-			Message: "Timestamp is required",
-		})
-		return
-	}
-	if req.Latitude == 0 || req.Longitude == 0 {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(Response{
-			Success: false,
-			Message: "Latitude and longitude are required",
-		})
-		return
-	}
-	if req.NetworkType == "" {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(Response{
-			Success: false,
-			Message: "Network type is required",
-		})
-		return
-	}
-	params := db.CreateMeasurementParams{
-		Timestamp:     req.Timestamp,
-		Latitude:      strconv.FormatFloat(req.Latitude, 'f', 8, 64),
-		Longitude:     strconv.FormatFloat(req.Longitude, 'f', 8, 64),
-		NetworkType:   req.NetworkType,
-		PlmnID:        toNullString(req.PLMNID),
-		Lac:           toNullString(req.LAC),
-		Tac:           toNullString(req.TAC),
-		CellID:        toNullString(req.CellID),
-		Arfcn:         toNullInt32(req.ARFCN),
-		FrequencyBand: toNullString(req.FrequencyBand),
-		Rssi:          toNullInt32(req.RSSI),
-		EcNo:          toNullFloatString(req.EcNo),
-		Rscp:          toNullInt32(req.RSCP),
-		Rsrq:          toNullFloatString(req.RSRQ),
-		Rsrp:          toNullInt32(req.RSRP),
-		DownloadSpeed: toNullFloatString(req.DownloadSpeed),
-		UploadSpeed:   toNullFloatString(req.UploadSpeed),
-		PingMs:        toNullInt32(req.PingMS),
-		DnsMs:         toNullInt32(req.DNSMS),
-		HttpLatencyMs: toNullInt32(req.HTTPLatencyMS),
-		SmsDeliveryMs: toNullInt32(req.SMSDeliveryMS),
-	}
-	result, err := h.db.CreateMeasurement(r.Context(), params)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(Response{
-			Success: false,
-			Message: "Failed to store measurement",
-		})
-		return
-	}
-	id, err := result.LastInsertId()
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(Response{
-			Success: false,
-			Message: "Failed to get inserted ID",
-		})
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{
-		Success: true,
-		Message: "Measurement uploaded successfully",
-		Data:    MeasurementResponse{ID: id},
-	})
-}
-
-// PUT /api/admin/config
-// Description: Admin updates client configuration
-// Auth: Admin token required
+// PUT /api/v1/admin/config
 func (h *Handler) UpdateClientConfigHandler(w http.ResponseWriter, r *http.Request) {
 	var req UpdateConfigRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -272,13 +205,11 @@ func (h *Handler) UpdateClientConfigHandler(w http.ResponseWriter, r *http.Reque
 
 	// Validate test types
 	validTestTypes := map[string]bool{
-		"signal_strength": true,
-		"download_speed":  true,
-		"upload_speed":    true,
-		"ping":            true,
-		"dns":             true,
-		"http":            true,
-		"sms":             true,
+		"http": true,
+		"ping": true,
+		"dns":  true,
+		"web":  true,
+		"sms":  true,
 	}
 	for _, testType := range req.TestTypes {
 		if !validTestTypes[testType] {
@@ -289,64 +220,6 @@ func (h *Handler) UpdateClientConfigHandler(w http.ResponseWriter, r *http.Reque
 				Message: "Invalid test type: " + testType,
 			})
 			return
-		}
-	}
-
-	// Validate thresholds
-	requiredThresholds := map[string]bool{
-		"signal_strength": true,
-		"download_speed":  true,
-		"upload_speed":    true,
-		"ping":            true,
-		"dns":             true,
-		"http":            true,
-		"sms":             true,
-	}
-
-	for testType := range requiredThresholds {
-		threshold, exists := req.Thresholds[testType]
-		if !exists {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(Response{
-				Success: false,
-				Message: "Missing threshold for test type: " + testType,
-			})
-			return
-		}
-
-		// Validate threshold ranges based on test type
-		switch testType {
-		case "signal_strength":
-			if threshold.Min > -50 || threshold.Max < -90 || threshold.Min >= threshold.Max {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(Response{
-					Success: false,
-					Message: "Invalid signal strength threshold range (should be between -90 and -50 dBm)",
-				})
-				return
-			}
-		case "download_speed", "upload_speed":
-			if threshold.Min < 0 || threshold.Max > 1000 || threshold.Min >= threshold.Max {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(Response{
-					Success: false,
-					Message: "Invalid speed threshold range (should be between 0 and 1000 Mbps)",
-				})
-				return
-			}
-		case "ping", "dns", "http", "sms":
-			if threshold.Min < 0 || threshold.Max > 10000 || threshold.Min >= threshold.Max {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(Response{
-					Success: false,
-					Message: "Invalid latency threshold range (should be between 0 and 10000 ms)",
-				})
-				return
-			}
 		}
 	}
 
@@ -362,22 +235,10 @@ func (h *Handler) UpdateClientConfigHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	thresholdsJSON, err := json.Marshal(req.Thresholds)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(Response{
-			Success: false,
-			Message: "Failed to process thresholds",
-		})
-		return
-	}
-
 	// Update configuration in database
 	err = h.db.UpdateClientConfig(r.Context(), db.UpdateClientConfigParams{
 		SamplingIntervalSeconds: int32(req.SamplingIntervalSeconds),
 		TestTypes:               testTypesJSON,
-		Thresholds:              thresholdsJSON,
 	})
 	if err != nil {
 		w.Header().Set("Content-Type", "application/json")
@@ -397,7 +258,358 @@ func (h *Handler) UpdateClientConfigHandler(w http.ResponseWriter, r *http.Reque
 		Data: ClientConfigResponse{
 			SamplingIntervalSeconds: req.SamplingIntervalSeconds,
 			TestTypes:               req.TestTypes,
-			Thresholds:              req.Thresholds,
 		},
+	})
+}
+
+// POST /api/v1/measurements/upload
+func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *http.Request) {
+	var req NetworkDataUploadRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(Response{
+			Success: false,
+			Message: "Invalid request body",
+		})
+		return
+	}
+
+	if req.DeviceID == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(Response{
+			Success: false,
+			Message: "Device ID is required",
+		})
+		return
+	}
+
+	if len(req.Measurements) == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(Response{
+			Success: false,
+			Message: "At least one measurement is required",
+		})
+		return
+	}
+
+	// Process each measurement
+	for _, m := range req.Measurements {
+		additionalParamsJSON, _ := json.Marshal(m.AdditionalParams)
+		params := db.CreateNetworkMeasurementParams{
+			DeviceID:              req.DeviceID,
+			Timestamp:             time.Unix(m.Timestamp, 0),
+			Latitude:              sql.NullString{String: strconv.FormatFloat(*m.Latitude, 'f', 8, 64), Valid: m.Latitude != nil},
+			Longitude:             sql.NullString{String: strconv.FormatFloat(*m.Longitude, 'f', 8, 64), Valid: m.Longitude != nil},
+			CellularTechnology:    sql.NullString{String: *m.CellularTechnology, Valid: m.CellularTechnology != nil},
+			NetworkOperatorName:   sql.NullString{String: *m.NetworkOperatorName, Valid: m.NetworkOperatorName != nil},
+			NetworkOperatorMccmnc: sql.NullString{String: *m.NetworkOperatorMCCMNC, Valid: m.NetworkOperatorMCCMNC != nil},
+			Lac:                   sql.NullInt32{Int32: *m.LAC, Valid: m.LAC != nil},
+			Rac:                   sql.NullInt32{Int32: *m.RAC, Valid: m.RAC != nil},
+			Tac:                   sql.NullInt32{Int32: *m.TAC, Valid: m.TAC != nil},
+			CellID:                sql.NullInt64{Int64: *m.CellID, Valid: m.CellID != nil},
+			Arfcn:                 sql.NullInt32{Int32: *m.ARFCN, Valid: m.ARFCN != nil},
+			SignalStrength:        sql.NullInt32{Int32: *m.SignalStrength, Valid: m.SignalStrength != nil},
+			SignalQuality:         sql.NullInt32{Int32: *m.SignalQuality, Valid: m.SignalQuality != nil},
+			AdditionalParams:      additionalParamsJSON,
+		}
+
+		_, err := h.db.CreateNetworkMeasurement(r.Context(), params)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(Response{
+				Success: false,
+				Message: "Failed to store measurement",
+			})
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(Response{
+		Success: true,
+		Message: "Measurements uploaded successfully",
+	})
+}
+
+// POST /api/v1/tests/http/upload
+func (h *Handler) UploadHttpTestsHandler(w http.ResponseWriter, r *http.Request) {
+	var req TestResultUploadRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(Response{
+			Success: false,
+			Message: "Invalid request body",
+		})
+		return
+	}
+
+	results, ok := req.Results.([]HttpTestResult)
+	if !ok {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(Response{
+			Success: false,
+			Message: "Invalid test results format",
+		})
+		return
+	}
+
+	for _, result := range results {
+		params := db.CreateHttpTestResultParams{
+			DeviceID:         req.DeviceID,
+			Timestamp:        time.Unix(result.Timestamp, 0),
+			Success:          result.Success,
+			ErrorMessage:     sql.NullString{String: *result.ErrorMessage, Valid: result.ErrorMessage != nil},
+			TestType:         db.HttpTestResultsTestType(result.Type),
+			Url:              result.URL,
+			BytesTransferred: sql.NullInt64{Int64: *result.BytesTransferred, Valid: result.BytesTransferred != nil},
+			DurationMillis:   sql.NullInt64{Int64: *result.DurationMillis, Valid: result.DurationMillis != nil},
+			ThroughputKbps:   sql.NullString{String: strconv.FormatFloat(*result.ThroughputKbps, 'f', 2, 64), Valid: result.ThroughputKbps != nil},
+		}
+
+		_, err := h.db.CreateHttpTestResult(r.Context(), params)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(Response{
+				Success: false,
+				Message: "Failed to store HTTP test result",
+			})
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(Response{
+		Success: true,
+		Message: "HTTP test results uploaded successfully",
+	})
+}
+
+// POST /api/v1/tests/ping/upload
+func (h *Handler) UploadPingTestsHandler(w http.ResponseWriter, r *http.Request) {
+	var req TestResultUploadRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(Response{
+			Success: false,
+			Message: "Invalid request body",
+		})
+		return
+	}
+
+	results, ok := req.Results.([]PingTestResult)
+	if !ok {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(Response{
+			Success: false,
+			Message: "Invalid test results format",
+		})
+		return
+	}
+
+	for _, result := range results {
+		params := db.CreatePingTestResultParams{
+			DeviceID:           req.DeviceID,
+			Timestamp:          time.Unix(result.Timestamp, 0),
+			Success:            result.Success,
+			ErrorMessage:       sql.NullString{String: *result.ErrorMessage, Valid: result.ErrorMessage != nil},
+			Host:               result.Host,
+			PacketsTransmitted: sql.NullInt32{Int32: *result.PacketsTransmitted, Valid: result.PacketsTransmitted != nil},
+			PacketsReceived:    sql.NullInt32{Int32: *result.PacketsReceived, Valid: result.PacketsReceived != nil},
+			MinRttMillis:       sql.NullFloat64{Float64: *result.MinRttMillis, Valid: result.MinRttMillis != nil},
+			AvgRttMillis:       sql.NullFloat64{Float64: *result.AvgRttMillis, Valid: result.AvgRttMillis != nil},
+			MaxRttMillis:       sql.NullFloat64{Float64: *result.MaxRttMillis, Valid: result.MaxRttMillis != nil},
+			IpAddress:          sql.NullString{String: *result.IPAddress, Valid: result.IPAddress != nil},
+		}
+
+		_, err := h.db.CreatePingTestResult(r.Context(), params)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(Response{
+				Success: false,
+				Message: "Failed to store ping test result",
+			})
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(Response{
+		Success: true,
+		Message: "Ping test results uploaded successfully",
+	})
+}
+
+// POST /api/v1/tests/dns/upload
+func (h *Handler) UploadDnsTestsHandler(w http.ResponseWriter, r *http.Request) {
+	var req TestResultUploadRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(Response{
+			Success: false,
+			Message: "Invalid request body",
+		})
+		return
+	}
+
+	results, ok := req.Results.([]DnsTestResult)
+	if !ok {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(Response{
+			Success: false,
+			Message: "Invalid test results format",
+		})
+		return
+	}
+
+	for _, result := range results {
+		resolvedIPsJSON, _ := json.Marshal(result.ResolvedIPAddresses)
+		params := db.CreateDnsTestResultParams{
+			DeviceID:             req.DeviceID,
+			Timestamp:            time.Unix(result.Timestamp, 0),
+			Success:              result.Success,
+			ErrorMessage:         sql.NullString{String: *result.ErrorMessage, Valid: result.ErrorMessage != nil},
+			Hostname:             result.Hostname,
+			ResolutionTimeMillis: sql.NullInt64{Int64: *result.ResolutionTimeMillis, Valid: result.ResolutionTimeMillis != nil},
+			ResolvedIpAddresses:  resolvedIPsJSON,
+		}
+
+		_, err := h.db.CreateDnsTestResult(r.Context(), params)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(Response{
+				Success: false,
+				Message: "Failed to store DNS test result",
+			})
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(Response{
+		Success: true,
+		Message: "DNS test results uploaded successfully",
+	})
+}
+
+// POST /api/v1/tests/web/upload
+func (h *Handler) UploadWebTestsHandler(w http.ResponseWriter, r *http.Request) {
+	var req TestResultUploadRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(Response{
+			Success: false,
+			Message: "Invalid request body",
+		})
+		return
+	}
+
+	results, ok := req.Results.([]WebTestResult)
+	if !ok {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(Response{
+			Success: false,
+			Message: "Invalid test results format",
+		})
+		return
+	}
+
+	for _, result := range results {
+		params := db.CreateWebTestResultParams{
+			DeviceID:          req.DeviceID,
+			Timestamp:         time.Unix(result.Timestamp, 0),
+			Success:           result.Success,
+			ErrorMessage:      sql.NullString{String: *result.ErrorMessage, Valid: result.ErrorMessage != nil},
+			Url:               result.URL,
+			LoadingTimeMillis: sql.NullInt64{Int64: *result.LoadingTimeMillis, Valid: result.LoadingTimeMillis != nil},
+			ResponseCode:      sql.NullInt32{Int32: *result.ResponseCode, Valid: result.ResponseCode != nil},
+			PageSizeBytes:     sql.NullInt64{Int64: *result.PageSizeBytes, Valid: result.PageSizeBytes != nil},
+		}
+
+		_, err := h.db.CreateWebTestResult(r.Context(), params)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(Response{
+				Success: false,
+				Message: "Failed to store web test result",
+			})
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(Response{
+		Success: true,
+		Message: "Web test results uploaded successfully",
+	})
+}
+
+// POST /api/v1/tests/sms/upload
+func (h *Handler) UploadSmsTestsHandler(w http.ResponseWriter, r *http.Request) {
+	var req TestResultUploadRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(Response{
+			Success: false,
+			Message: "Invalid request body",
+		})
+		return
+	}
+
+	results, ok := req.Results.([]SmsTestResult)
+	if !ok {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(Response{
+			Success: false,
+			Message: "Invalid test results format",
+		})
+		return
+	}
+
+	for _, result := range results {
+		params := db.CreateSmsTestResultParams{
+			DeviceID:             req.DeviceID,
+			Timestamp:            time.Unix(result.Timestamp, 0),
+			Success:              result.Success,
+			ErrorMessage:         sql.NullString{String: *result.ErrorMessage, Valid: result.ErrorMessage != nil},
+			DestinationAddress:   result.DestinationAddress,
+			SubmissionTimeMillis: sql.NullInt64{Int64: *result.SubmissionTimeMillis, Valid: result.SubmissionTimeMillis != nil},
+			DeliveryTimeMillis:   sql.NullInt64{Int64: *result.DeliveryTimeMillis, Valid: result.DeliveryTimeMillis != nil},
+			DurationMillis:       sql.NullInt64{Int64: *result.DurationMillis, Valid: result.DurationMillis != nil},
+		}
+
+		_, err := h.db.CreateSmsTestResult(r.Context(), params)
+		if err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(Response{
+				Success: false,
+				Message: "Failed to store SMS test result",
+			})
+			return
+		}
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(Response{
+		Success: true,
+		Message: "SMS test results uploaded successfully",
 	})
 }
