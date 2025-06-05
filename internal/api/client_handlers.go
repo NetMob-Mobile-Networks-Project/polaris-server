@@ -672,49 +672,55 @@ func (h *Handler) UploadHttpTestsHandler(w http.ResponseWriter, r *http.Request)
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(UploadResponse{
 				Status:           "partial_success",
-				Message:          fmt.Sprintf("Invalid timestamp in result %d", i+1),
-				RecordsProcessed: &processedCount,
-			})
-			return
-		}
-
-		// Validate throughput if provided
-		if result.ThroughputKbps != nil && *result.ThroughputKbps < 0 {
-			hasErrors = true
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(UploadResponse{
-				Status:           "partial_success",
-				Message:          fmt.Sprintf("Invalid throughput in result %d: must be non-negative", i+1),
-				RecordsProcessed: &processedCount,
-			})
-			return
-		}
-
-		// Validate duration if provided
-		if result.DurationMillis != nil && *result.DurationMillis < 0 {
-			hasErrors = true
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(UploadResponse{
-				Status:           "partial_success",
-				Message:          fmt.Sprintf("Invalid duration in result %d: must be non-negative", i+1),
+				Message:          fmt.Sprintf("Invalid timestamp in result %d: must be positive", i+1),
 				RecordsProcessed: &processedCount,
 			})
 			return
 		}
 
 		// Validate bytes transferred if provided
-		if result.BytesTransferred != nil && *result.BytesTransferred < 0 {
-			hasErrors = true
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(UploadResponse{
-				Status:           "partial_success",
-				Message:          fmt.Sprintf("Invalid bytes transferred in result %d: must be non-negative", i+1),
-				RecordsProcessed: &processedCount,
-			})
-			return
+		if result.BytesTransferred != nil {
+			if *result.BytesTransferred < 0 {
+				hasErrors = true
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(UploadResponse{
+					Status:           "partial_success",
+					Message:          fmt.Sprintf("Invalid bytes transferred in result %d: must be non-negative", i+1),
+					RecordsProcessed: &processedCount,
+				})
+				return
+			}
+		}
+
+		// Validate duration if provided
+		if result.DurationMillis != nil {
+			if *result.DurationMillis < 0 {
+				hasErrors = true
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(UploadResponse{
+					Status:           "partial_success",
+					Message:          fmt.Sprintf("Invalid duration in result %d: must be non-negative", i+1),
+					RecordsProcessed: &processedCount,
+				})
+				return
+			}
+		}
+
+		// Validate throughput if provided
+		if result.ThroughputKbps != nil {
+			if *result.ThroughputKbps < 0 {
+				hasErrors = true
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(UploadResponse{
+					Status:           "partial_success",
+					Message:          fmt.Sprintf("Invalid throughput in result %d: must be non-negative", i+1),
+					RecordsProcessed: &processedCount,
+				})
+				return
+			}
 		}
 
 		// Create database parameters with nil checks
@@ -892,7 +898,7 @@ func (h *Handler) UploadPingTestsHandler(w http.ResponseWriter, r *http.Request)
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(UploadResponse{
 				Status:           "partial_success",
-				Message:          fmt.Sprintf("Invalid timestamp in result %d", i+1),
+				Message:          fmt.Sprintf("Invalid timestamp in result %d: must be positive", i+1),
 				RecordsProcessed: &processedCount,
 			})
 			return
@@ -1025,165 +1031,641 @@ func (h *Handler) UploadPingTestsHandler(w http.ResponseWriter, r *http.Request)
 
 // POST /api/v1/tests/dns/upload
 func (h *Handler) UploadDnsTestsHandler(w http.ResponseWriter, r *http.Request) {
-	var req TestResultUploadRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(Response{
-			Success: false,
-			Message: "Invalid request body",
-		})
-		return
-	}
-
-	results, ok := req.Results.([]DnsTestResult)
-	if !ok {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(Response{
-			Success: false,
-			Message: "Invalid test results format",
-		})
-		return
-	}
-
-	for _, result := range results {
-		resolvedIPsJSON, _ := json.Marshal(result.ResolvedIPAddresses)
-		params := db.CreateDnsTestResultParams{
-			DeviceID:             req.DeviceID,
-			Timestamp:            time.Unix(result.Timestamp, 0),
-			Success:              result.Success,
-			ErrorMessage:         sql.NullString{String: *result.ErrorMessage, Valid: result.ErrorMessage != nil},
-			Hostname:             result.Hostname,
-			ResolutionTimeMillis: sql.NullInt64{Int64: *result.ResolutionTimeMillis, Valid: result.ResolutionTimeMillis != nil},
-			ResolvedIpAddresses:  resolvedIPsJSON,
-		}
-
-		_, err := h.db.CreateDnsTestResult(r.Context(), params)
-		if err != nil {
+	// Add panic recovery
+	defer func() {
+		if err := recover(); err != nil {
+			log.Printf("Panic in UploadDnsTestsHandler: %v", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(Response{
-				Success: false,
-				Message: "Failed to store DNS test result",
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:  "error",
+				Message: "Internal server error",
+			})
+		}
+	}()
+
+	var req struct {
+		DeviceID string          `json:"deviceId"`
+		TestType string          `json:"testType"`
+		Results  []DnsTestResult `json:"results"`
+	}
+
+	// Log the incoming request body for debugging
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Error reading request body: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
+			Message: "Error reading request body",
+		})
+		return
+	}
+	log.Printf("Received DNS test upload request: %s", string(body))
+
+	// Create a new reader with the body for json.Decoder
+	r.Body = io.NopCloser(bytes.NewBuffer(body))
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("Error decoding request body: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
+			Message: fmt.Sprintf("Invalid request body: %v", err),
+		})
+		return
+	}
+
+	if req.DeviceID == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
+			Message: "Device ID is required",
+		})
+		return
+	}
+
+	if req.TestType == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
+			Message: "Test type is required",
+		})
+		return
+	}
+
+	// Validate test type
+	if req.TestType != TestTypeDNS {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
+			Message: fmt.Sprintf("Invalid test type: must be '%s'", TestTypeDNS),
+		})
+		return
+	}
+
+	if len(req.Results) == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
+			Message: "At least one test result is required",
+		})
+		return
+	}
+
+	processedCount := 0
+	hasErrors := false
+
+	for i, result := range req.Results {
+		// Log each result for debugging
+		log.Printf("Processing DNS test result %d: %+v", i+1, result)
+
+		// Validate hostname
+		if result.Hostname == "" {
+			hasErrors = true
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Hostname is required in result %d", i+1),
+				RecordsProcessed: &processedCount,
 			})
 			return
 		}
+
+		// Validate timestamp
+		if result.Timestamp <= 0 {
+			hasErrors = true
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Invalid timestamp in result %d: must be positive", i+1),
+				RecordsProcessed: &processedCount,
+			})
+			return
+		}
+
+		// Validate resolution time if provided
+		if result.ResolutionTimeMillis != nil && *result.ResolutionTimeMillis < 0 {
+			hasErrors = true
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Invalid resolution time in result %d: must be non-negative", i+1),
+				RecordsProcessed: &processedCount,
+			})
+			return
+		}
+
+		// Create database parameters with nil checks
+		params := db.CreateDnsTestResultParams{
+			DeviceID:  req.DeviceID,
+			Timestamp: time.Unix(result.Timestamp/1000, (result.Timestamp%1000)*1000000), // Convert milliseconds to seconds and nanoseconds
+			Success:   result.Success,
+			Hostname:  result.Hostname,
+		}
+
+		// Set optional fields with nil checks
+		if result.ErrorMessage != nil {
+			params.ErrorMessage = sql.NullString{String: *result.ErrorMessage, Valid: true}
+		}
+		if result.ResolutionTimeMillis != nil {
+			params.ResolutionTimeMillis = sql.NullInt64{Int64: *result.ResolutionTimeMillis, Valid: true}
+		}
+		if result.ResolvedIPAddresses != nil {
+			resolvedIPsJSON, err := json.Marshal(result.ResolvedIPAddresses)
+			if err != nil {
+				log.Printf("Error marshaling resolved IP addresses: %v", err)
+				hasErrors = true
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(UploadResponse{
+					Status:           "partial_success",
+					Message:          fmt.Sprintf("Failed to process resolved IP addresses in result %d", i+1),
+					RecordsProcessed: &processedCount,
+				})
+				return
+			}
+			params.ResolvedIpAddresses = resolvedIPsJSON
+		}
+
+		// Log the database parameters for debugging
+		log.Printf("Creating DNS test result with params: %+v", params)
+
+		_, err := h.db.CreateDnsTestResult(r.Context(), params)
+		if err != nil {
+			log.Printf("Error creating DNS test result: %v", err)
+			hasErrors = true
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Failed to store DNS test result: %v", err),
+				RecordsProcessed: &processedCount,
+			})
+			return
+		}
+
+		processedCount++
 	}
 
+	// Determine final status
+	status := "success"
+	if hasErrors {
+		status = "partial_success"
+	}
+
+	log.Printf("Successfully processed %d DNS test results", processedCount)
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{
-		Success: true,
-		Message: "DNS test results uploaded successfully",
+	json.NewEncoder(w).Encode(UploadResponse{
+		Status:           status,
+		RecordsProcessed: &processedCount,
 	})
 }
 
 // POST /api/v1/tests/web/upload
 func (h *Handler) UploadWebTestsHandler(w http.ResponseWriter, r *http.Request) {
-	var req TestResultUploadRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(Response{
-			Success: false,
-			Message: "Invalid request body",
-		})
-		return
-	}
-
-	results, ok := req.Results.([]WebTestResult)
-	if !ok {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(Response{
-			Success: false,
-			Message: "Invalid test results format",
-		})
-		return
-	}
-
-	for _, result := range results {
-		params := db.CreateWebTestResultParams{
-			DeviceID:          req.DeviceID,
-			Timestamp:         time.Unix(result.Timestamp, 0),
-			Success:           result.Success,
-			ErrorMessage:      sql.NullString{String: *result.ErrorMessage, Valid: result.ErrorMessage != nil},
-			Url:               result.URL,
-			LoadingTimeMillis: sql.NullInt64{Int64: *result.LoadingTimeMillis, Valid: result.LoadingTimeMillis != nil},
-			ResponseCode:      sql.NullInt32{Int32: *result.ResponseCode, Valid: result.ResponseCode != nil},
-			PageSizeBytes:     sql.NullInt64{Int64: *result.PageSizeBytes, Valid: result.PageSizeBytes != nil},
-		}
-
-		_, err := h.db.CreateWebTestResult(r.Context(), params)
-		if err != nil {
+	// Add panic recovery
+	defer func() {
+		if err := recover(); err != nil {
+			log.Printf("Panic in UploadWebTestsHandler: %v", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(Response{
-				Success: false,
-				Message: "Failed to store web test result",
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:  "error",
+				Message: "Internal server error",
+			})
+		}
+	}()
+
+	var req struct {
+		DeviceID string          `json:"deviceId"`
+		TestType string          `json:"testType"`
+		Results  []WebTestResult `json:"results"`
+	}
+
+	// Log the incoming request body for debugging
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Error reading request body: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
+			Message: "Error reading request body",
+		})
+		return
+	}
+	log.Printf("Received web test upload request: %s", string(body))
+
+	// Create a new reader with the body for json.Decoder
+	r.Body = io.NopCloser(bytes.NewBuffer(body))
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("Error decoding request body: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
+			Message: fmt.Sprintf("Invalid request body: %v", err),
+		})
+		return
+	}
+
+	if req.DeviceID == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
+			Message: "Device ID is required",
+		})
+		return
+	}
+
+	if req.TestType == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
+			Message: "Test type is required",
+		})
+		return
+	}
+
+	// Validate test type
+	if req.TestType != TestTypeWEB {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
+			Message: fmt.Sprintf("Invalid test type: must be '%s'", TestTypeWEB),
+		})
+		return
+	}
+
+	if len(req.Results) == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
+			Message: "At least one test result is required",
+		})
+		return
+	}
+
+	processedCount := 0
+	hasErrors := false
+
+	for i, result := range req.Results {
+		// Log each result for debugging
+		log.Printf("Processing web test result %d: %+v", i+1, result)
+
+		// Validate URL
+		if result.URL == "" {
+			hasErrors = true
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("URL is required in result %d", i+1),
+				RecordsProcessed: &processedCount,
 			})
 			return
 		}
+
+		// Validate timestamp
+		if result.Timestamp <= 0 {
+			hasErrors = true
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Invalid timestamp in result %d: must be positive", i+1),
+				RecordsProcessed: &processedCount,
+			})
+			return
+		}
+
+		// Validate loading time if provided
+		if result.LoadingTimeMillis != nil && *result.LoadingTimeMillis < 0 {
+			hasErrors = true
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Invalid loading time in result %d: must be non-negative", i+1),
+				RecordsProcessed: &processedCount,
+			})
+			return
+		}
+
+		// Validate response code if provided
+		if result.ResponseCode != nil && (*result.ResponseCode < 100 || *result.ResponseCode > 599) {
+			hasErrors = true
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Invalid response code in result %d: must be between 100 and 599", i+1),
+				RecordsProcessed: &processedCount,
+			})
+			return
+		}
+
+		// Validate page size if provided
+		if result.PageSizeBytes != nil && *result.PageSizeBytes < 0 {
+			hasErrors = true
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Invalid page size in result %d: must be non-negative", i+1),
+				RecordsProcessed: &processedCount,
+			})
+			return
+		}
+
+		// Create database parameters with nil checks
+		params := db.CreateWebTestResultParams{
+			DeviceID:  req.DeviceID,
+			Timestamp: time.Unix(result.Timestamp/1000, (result.Timestamp%1000)*1000000), // Convert milliseconds to seconds and nanoseconds
+			Success:   result.Success,
+			Url:       result.URL,
+		}
+
+		// Set optional fields with nil checks
+		if result.ErrorMessage != nil {
+			params.ErrorMessage = sql.NullString{String: *result.ErrorMessage, Valid: true}
+		}
+		if result.LoadingTimeMillis != nil {
+			params.LoadingTimeMillis = sql.NullInt64{Int64: *result.LoadingTimeMillis, Valid: true}
+		}
+		if result.ResponseCode != nil {
+			params.ResponseCode = sql.NullInt32{Int32: *result.ResponseCode, Valid: true}
+		}
+		if result.PageSizeBytes != nil {
+			params.PageSizeBytes = sql.NullInt64{Int64: *result.PageSizeBytes, Valid: true}
+		}
+
+		// Log the database parameters for debugging
+		log.Printf("Creating web test result with params: %+v", params)
+
+		_, err := h.db.CreateWebTestResult(r.Context(), params)
+		if err != nil {
+			log.Printf("Error creating web test result: %v", err)
+			hasErrors = true
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Failed to store web test result: %v", err),
+				RecordsProcessed: &processedCount,
+			})
+			return
+		}
+
+		processedCount++
 	}
 
+	// Determine final status
+	status := "success"
+	if hasErrors {
+		status = "partial_success"
+	}
+
+	log.Printf("Successfully processed %d web test results", processedCount)
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{
-		Success: true,
-		Message: "Web test results uploaded successfully",
+	json.NewEncoder(w).Encode(UploadResponse{
+		Status:           status,
+		RecordsProcessed: &processedCount,
 	})
 }
 
 // POST /api/v1/tests/sms/upload
 func (h *Handler) UploadSmsTestsHandler(w http.ResponseWriter, r *http.Request) {
-	var req TestResultUploadRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(Response{
-			Success: false,
-			Message: "Invalid request body",
-		})
-		return
-	}
-
-	results, ok := req.Results.([]SmsTestResult)
-	if !ok {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(Response{
-			Success: false,
-			Message: "Invalid test results format",
-		})
-		return
-	}
-
-	for _, result := range results {
-		params := db.CreateSmsTestResultParams{
-			DeviceID:             req.DeviceID,
-			Timestamp:            time.Unix(result.Timestamp, 0),
-			Success:              result.Success,
-			ErrorMessage:         sql.NullString{String: *result.ErrorMessage, Valid: result.ErrorMessage != nil},
-			DestinationAddress:   result.DestinationAddress,
-			SubmissionTimeMillis: sql.NullInt64{Int64: *result.SubmissionTimeMillis, Valid: result.SubmissionTimeMillis != nil},
-			DeliveryTimeMillis:   sql.NullInt64{Int64: *result.DeliveryTimeMillis, Valid: result.DeliveryTimeMillis != nil},
-			DurationMillis:       sql.NullInt64{Int64: *result.DurationMillis, Valid: result.DurationMillis != nil},
-		}
-
-		_, err := h.db.CreateSmsTestResult(r.Context(), params)
-		if err != nil {
+	// Add panic recovery
+	defer func() {
+		if err := recover(); err != nil {
+			log.Printf("Panic in UploadSmsTestsHandler: %v", err)
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(Response{
-				Success: false,
-				Message: "Failed to store SMS test result",
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:  "error",
+				Message: "Internal server error",
+			})
+		}
+	}()
+
+	var req struct {
+		DeviceID string          `json:"deviceId"`
+		TestType string          `json:"testType"`
+		Results  []SmsTestResult `json:"results"`
+	}
+
+	// Log the incoming request body for debugging
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Error reading request body: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
+			Message: "Error reading request body",
+		})
+		return
+	}
+	log.Printf("Received SMS test upload request: %s", string(body))
+
+	// Create a new reader with the body for json.Decoder
+	r.Body = io.NopCloser(bytes.NewBuffer(body))
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		log.Printf("Error decoding request body: %v", err)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
+			Message: fmt.Sprintf("Invalid request body: %v", err),
+		})
+		return
+	}
+
+	if req.DeviceID == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
+			Message: "Device ID is required",
+		})
+		return
+	}
+
+	if req.TestType == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
+			Message: "Test type is required",
+		})
+		return
+	}
+
+	// Validate test type
+	if req.TestType != TestTypeSMS {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
+			Message: fmt.Sprintf("Invalid test type: must be '%s'", TestTypeSMS),
+		})
+		return
+	}
+
+	if len(req.Results) == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
+			Message: "At least one test result is required",
+		})
+		return
+	}
+
+	processedCount := 0
+	hasErrors := false
+
+	for i, result := range req.Results {
+		// Log each result for debugging
+		log.Printf("Processing SMS test result %d: %+v", i+1, result)
+
+		// Validate destination address
+		if result.DestinationAddress == "" {
+			hasErrors = true
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Destination address is required in result %d", i+1),
+				RecordsProcessed: &processedCount,
 			})
 			return
 		}
+
+		// Validate timestamp
+		if result.Timestamp <= 0 {
+			hasErrors = true
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Invalid timestamp in result %d: must be positive", i+1),
+				RecordsProcessed: &processedCount,
+			})
+			return
+		}
+
+		// Validate submission time if provided
+		if result.SubmissionTimeMillis != nil && *result.SubmissionTimeMillis < 0 {
+			hasErrors = true
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Invalid submission time in result %d: must be non-negative", i+1),
+				RecordsProcessed: &processedCount,
+			})
+			return
+		}
+
+		// Validate delivery time if provided
+		if result.DeliveryTimeMillis != nil && *result.DeliveryTimeMillis < 0 {
+			hasErrors = true
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Invalid delivery time in result %d: must be non-negative", i+1),
+				RecordsProcessed: &processedCount,
+			})
+			return
+		}
+
+		// Validate duration if provided
+		if result.DurationMillis != nil && *result.DurationMillis < 0 {
+			hasErrors = true
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Invalid duration in result %d: must be non-negative", i+1),
+				RecordsProcessed: &processedCount,
+			})
+			return
+		}
+
+		// Create database parameters with nil checks
+		params := db.CreateSmsTestResultParams{
+			DeviceID:           req.DeviceID,
+			Timestamp:          time.Unix(result.Timestamp/1000, (result.Timestamp%1000)*1000000), // Convert milliseconds to seconds and nanoseconds
+			Success:            result.Success,
+			DestinationAddress: result.DestinationAddress,
+		}
+
+		// Set optional fields with nil checks
+		if result.ErrorMessage != nil {
+			params.ErrorMessage = sql.NullString{String: *result.ErrorMessage, Valid: true}
+		}
+		if result.SubmissionTimeMillis != nil {
+			params.SubmissionTimeMillis = sql.NullInt64{Int64: *result.SubmissionTimeMillis, Valid: true}
+		}
+		if result.DeliveryTimeMillis != nil {
+			params.DeliveryTimeMillis = sql.NullInt64{Int64: *result.DeliveryTimeMillis, Valid: true}
+		}
+		if result.DurationMillis != nil {
+			params.DurationMillis = sql.NullInt64{Int64: *result.DurationMillis, Valid: true}
+		}
+
+		// Log the database parameters for debugging
+		log.Printf("Creating SMS test result with params: %+v", params)
+
+		_, err := h.db.CreateSmsTestResult(r.Context(), params)
+		if err != nil {
+			log.Printf("Error creating SMS test result: %v", err)
+			hasErrors = true
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Failed to store SMS test result: %v", err),
+				RecordsProcessed: &processedCount,
+			})
+			return
+		}
+
+		processedCount++
 	}
 
+	// Determine final status
+	status := "success"
+	if hasErrors {
+		status = "partial_success"
+	}
+
+	log.Printf("Successfully processed %d SMS test results", processedCount)
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{
-		Success: true,
-		Message: "SMS test results uploaded successfully",
+	json.NewEncoder(w).Encode(UploadResponse{
+		Status:           status,
+		RecordsProcessed: &processedCount,
 	})
 }
