@@ -531,7 +531,11 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 
 // POST /api/v1/tests/http/upload
 func (h *Handler) UploadHttpTestsHandler(w http.ResponseWriter, r *http.Request) {
-	var req TestResultUploadRequest
+	var req struct {
+		DeviceID string           `json:"device_id"`
+		Results  []HttpTestResult `json:"results"`
+	}
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
@@ -552,18 +556,7 @@ func (h *Handler) UploadHttpTestsHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	results, ok := req.Results.([]HttpTestResult)
-	if !ok {
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(UploadResponse{
-			Status:  "error",
-			Message: "Invalid test results format",
-		})
-		return
-	}
-
-	if len(results) == 0 {
+	if len(req.Results) == 0 {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(UploadResponse{
@@ -576,7 +569,7 @@ func (h *Handler) UploadHttpTestsHandler(w http.ResponseWriter, r *http.Request)
 	processedCount := 0
 	hasErrors := false
 
-	for i, result := range results {
+	for i, result := range req.Results {
 		// Validate test type
 		if result.Type != "DOWNLOAD" && result.Type != "UPLOAD" {
 			hasErrors = true
