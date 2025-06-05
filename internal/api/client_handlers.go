@@ -58,6 +58,13 @@ type MeasurementResponse struct {
 	ID int64 `json:"id"`
 }
 
+// Request structure for updating client configuration
+type UpdateConfigRequest struct {
+	SamplingIntervalSeconds int                       `json:"sampling_interval_seconds" validate:"required,min=60,max=3600"` // 1 minute to 1 hour
+	TestTypes               []string                  `json:"test_types" validate:"required,min=1,dive,oneof=signal_strength download_speed upload_speed ping dns http sms"`
+	Thresholds              map[string]ThresholdRange `json:"thresholds" validate:"required,min=1,dive"`
+}
+
 // GET /api/config
 // Description: Client fetches test configuration (intervals, test types, thresholds)
 // Response: JSON with success status, message, and config data
@@ -224,5 +231,173 @@ func (h *Handler) UploadClientDataHandler(w http.ResponseWriter, r *http.Request
 		Success: true,
 		Message: "Measurement uploaded successfully",
 		Data:    MeasurementResponse{ID: id},
+	})
+}
+
+// PUT /api/admin/config
+// Description: Admin updates client configuration
+// Auth: Admin token required
+func (h *Handler) UpdateClientConfigHandler(w http.ResponseWriter, r *http.Request) {
+	var req UpdateConfigRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(Response{
+			Success: false,
+			Message: "Invalid request body",
+		})
+		return
+	}
+
+	// Validate request
+	if req.SamplingIntervalSeconds < 60 || req.SamplingIntervalSeconds > 3600 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(Response{
+			Success: false,
+			Message: "Sampling interval must be between 60 and 3600 seconds",
+		})
+		return
+	}
+
+	if len(req.TestTypes) == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(Response{
+			Success: false,
+			Message: "At least one test type is required",
+		})
+		return
+	}
+
+	// Validate test types
+	validTestTypes := map[string]bool{
+		"signal_strength": true,
+		"download_speed":  true,
+		"upload_speed":    true,
+		"ping":            true,
+		"dns":             true,
+		"http":            true,
+		"sms":             true,
+	}
+	for _, testType := range req.TestTypes {
+		if !validTestTypes[testType] {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(Response{
+				Success: false,
+				Message: "Invalid test type: " + testType,
+			})
+			return
+		}
+	}
+
+	// Validate thresholds
+	requiredThresholds := map[string]bool{
+		"signal_strength": true,
+		"download_speed":  true,
+		"upload_speed":    true,
+		"ping":            true,
+		"dns":             true,
+		"http":            true,
+		"sms":             true,
+	}
+
+	for testType := range requiredThresholds {
+		threshold, exists := req.Thresholds[testType]
+		if !exists {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(Response{
+				Success: false,
+				Message: "Missing threshold for test type: " + testType,
+			})
+			return
+		}
+
+		// Validate threshold ranges based on test type
+		switch testType {
+		case "signal_strength":
+			if threshold.Min > -50 || threshold.Max < -90 || threshold.Min >= threshold.Max {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(Response{
+					Success: false,
+					Message: "Invalid signal strength threshold range (should be between -90 and -50 dBm)",
+				})
+				return
+			}
+		case "download_speed", "upload_speed":
+			if threshold.Min < 0 || threshold.Max > 1000 || threshold.Min >= threshold.Max {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(Response{
+					Success: false,
+					Message: "Invalid speed threshold range (should be between 0 and 1000 Mbps)",
+				})
+				return
+			}
+		case "ping", "dns", "http", "sms":
+			if threshold.Min < 0 || threshold.Max > 10000 || threshold.Min >= threshold.Max {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(Response{
+					Success: false,
+					Message: "Invalid latency threshold range (should be between 0 and 10000 ms)",
+				})
+				return
+			}
+		}
+	}
+
+	// Convert to JSON for storage
+	testTypesJSON, err := json.Marshal(req.TestTypes)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(Response{
+			Success: false,
+			Message: "Failed to process test types",
+		})
+		return
+	}
+
+	thresholdsJSON, err := json.Marshal(req.Thresholds)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(Response{
+			Success: false,
+			Message: "Failed to process thresholds",
+		})
+		return
+	}
+
+	// Update configuration in database
+	err = h.db.UpdateClientConfig(r.Context(), db.UpdateClientConfigParams{
+		SamplingIntervalSeconds: int32(req.SamplingIntervalSeconds),
+		TestTypes:               testTypesJSON,
+		Thresholds:              thresholdsJSON,
+	})
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(Response{
+			Success: false,
+			Message: "Failed to update configuration",
+		})
+		return
+	}
+
+	// Return success response
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(Response{
+		Success: true,
+		Message: "Configuration updated successfully",
+		Data: ClientConfigResponse{
+			SamplingIntervalSeconds: req.SamplingIntervalSeconds,
+			TestTypes:               req.TestTypes,
+			Thresholds:              req.Thresholds,
+		},
 	})
 }

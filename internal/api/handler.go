@@ -52,11 +52,17 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	protected.HandleFunc("/export/kml", h.ExportKMLHandler).Methods("GET")
 
 	// User Management APIs (admin only)
-	admin := protected.PathPrefix("").Subrouter()
+	admin := protected.PathPrefix("/admin").Subrouter()
+	admin.Use(h.AuthMiddleware)
 	admin.Use(h.AdminMiddleware)
+
+	// Admin user management routes
 	admin.HandleFunc("/users", h.ListUsersHandler).Methods("GET")
 	admin.HandleFunc("/users", h.CreateUserHandler).Methods("POST")
-	admin.HandleFunc("/users/{id}", h.DeleteUserHandler).Methods("DELETE")
+	admin.HandleFunc("/users/{id:[0-9]+}", h.DeleteUserHandler).Methods("DELETE")
+
+	// Admin configuration management
+	admin.HandleFunc("/config", h.UpdateClientConfigHandler).Methods("PUT")
 }
 
 // healthCheck handles the health check endpoint
