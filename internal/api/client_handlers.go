@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -296,7 +297,160 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 	}
 
 	// Process each measurement
-	for _, m := range req.Measurements {
+	for i, m := range req.Measurements {
+		// Validate timestamp
+		if m.Timestamp <= 0 {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(Response{
+				Success: false,
+				Message: fmt.Sprintf("Invalid timestamp in measurement %d", i+1),
+			})
+			return
+		}
+
+		// Validate coordinates if provided
+		if m.Latitude != nil {
+			if *m.Latitude < -90 || *m.Latitude > 90 {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(Response{
+					Success: false,
+					Message: fmt.Sprintf("Invalid latitude in measurement %d: must be between -90 and 90", i+1),
+				})
+				return
+			}
+		}
+		if m.Longitude != nil {
+			if *m.Longitude < -180 || *m.Longitude > 180 {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(Response{
+					Success: false,
+					Message: fmt.Sprintf("Invalid longitude in measurement %d: must be between -180 and 180", i+1),
+				})
+				return
+			}
+		}
+
+		// Validate cellular technology if provided
+		if m.CellularTechnology != nil {
+			validTechs := map[string]bool{
+				"2G": true, "3G": true, "4G": true, "5G": true,
+				"GSM": true, "UMTS": true, "LTE": true, "NR": true,
+			}
+			if !validTechs[*m.CellularTechnology] {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(Response{
+					Success: false,
+					Message: fmt.Sprintf("Invalid cellular technology in measurement %d: %s", i+1, *m.CellularTechnology),
+				})
+				return
+			}
+		}
+
+		// Validate MCCMNC format if provided (should be 5-6 digits)
+		if m.NetworkOperatorMCCMNC != nil {
+			if len(*m.NetworkOperatorMCCMNC) < 5 || len(*m.NetworkOperatorMCCMNC) > 6 {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(Response{
+					Success: false,
+					Message: fmt.Sprintf("Invalid MCCMNC format in measurement %d: must be 5-6 digits", i+1),
+				})
+				return
+			}
+			if _, err := strconv.Atoi(*m.NetworkOperatorMCCMNC); err != nil {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(Response{
+					Success: false,
+					Message: fmt.Sprintf("Invalid MCCMNC format in measurement %d: must contain only digits", i+1),
+				})
+				return
+			}
+		}
+
+		// Validate signal strength if provided (typically -140 to -40 dBm)
+		if m.SignalStrength != nil {
+			if *m.SignalStrength < -140 || *m.SignalStrength > -30 {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(Response{
+					Success: false,
+					Message: fmt.Sprintf("Invalid signal strength in measurement %d: must be between -140 and -30 dBm", i+1),
+				})
+				return
+			}
+		}
+
+		// Validate signal quality if provided (typically 0-100)
+		if m.SignalQuality != nil {
+			if *m.SignalQuality < 0 || *m.SignalQuality > 100 {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(Response{
+					Success: false,
+					Message: fmt.Sprintf("Invalid signal quality in measurement %d: must be between 0 and 100", i+1),
+				})
+				return
+			}
+		}
+
+		// Validate ARFCN if provided (typically 0-32767)
+		if m.ARFCN != nil {
+			if *m.ARFCN < 0 || *m.ARFCN > 32767 {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(Response{
+					Success: false,
+					Message: fmt.Sprintf("Invalid ARFCN in measurement %d: must be between 0 and 32767", i+1),
+				})
+				return
+			}
+		}
+
+		// Validate LAC, RAC, TAC if provided (should be positive)
+		if m.LAC != nil && *m.LAC < 0 {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(Response{
+				Success: false,
+				Message: fmt.Sprintf("Invalid LAC in measurement %d: must be positive", i+1),
+			})
+			return
+		}
+		if m.RAC != nil && *m.RAC < 0 {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(Response{
+				Success: false,
+				Message: fmt.Sprintf("Invalid RAC in measurement %d: must be positive", i+1),
+			})
+			return
+		}
+		if m.TAC != nil && *m.TAC < 0 {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(Response{
+				Success: false,
+				Message: fmt.Sprintf("Invalid TAC in measurement %d: must be positive", i+1),
+			})
+			return
+		}
+
+		// Validate Cell ID if provided (should be positive)
+		if m.CellID != nil && *m.CellID < 0 {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(Response{
+				Success: false,
+				Message: fmt.Sprintf("Invalid Cell ID in measurement %d: must be positive", i+1),
+			})
+			return
+		}
+
 		additionalParamsJSON, _ := json.Marshal(m.AdditionalParams)
 		params := db.CreateNetworkMeasurementParams{
 			DeviceID:              req.DeviceID,
