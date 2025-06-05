@@ -22,7 +22,6 @@ type Querier interface {
 	GetUser(ctx context.Context, id int32) (User, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int32) (User, error)
-	GetUserByUsername(ctx context.Context, username string) (User, error)
 	ListMeasurements(ctx context.Context, arg ListMeasurementsParams) ([]Measurement, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]ListUsersRow, error)
 	UpdateClientConfig(ctx context.Context, arg UpdateClientConfigParams) error

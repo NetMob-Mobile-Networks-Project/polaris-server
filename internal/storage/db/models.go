@@ -91,7 +91,6 @@ type Measurement struct {
 
 type User struct {
 	ID           int32        `json:"id"`
-	Username     string       `json:"username"`
 	Email        string       `json:"email"`
 	PasswordHash string       `json:"password_hash"`
 	Role         UsersRole    `json:"role"`

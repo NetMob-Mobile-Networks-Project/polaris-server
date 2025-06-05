@@ -14,7 +14,6 @@ import (
 
 // Request/Response structures
 type CreateUserRequest struct {
-	Username string `json:"username"`
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	Role     string `json:"role"`
@@ -22,7 +21,6 @@ type CreateUserRequest struct {
 
 type UserResponse struct {
 	ID        int    `json:"id"`
-	Username  string `json:"username"`
 	Email     string `json:"email"`
 	Role      string `json:"role"`
 	CreatedAt string `json:"created_at"`
@@ -86,7 +84,6 @@ func (h *Handler) ListUsersHandler(w http.ResponseWriter, r *http.Request) {
 	for i, user := range users {
 		userResponses[i] = UserResponse{
 			ID:        int(user.ID),
-			Username:  user.Username,
 			Email:     user.Email,
 			Role:      string(user.Role),
 			CreatedAt: user.CreatedAt.Time.Format(time.RFC3339),
@@ -115,8 +112,8 @@ func (h *Handler) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate request
-	if req.Username == "" || req.Email == "" || req.Password == "" {
-		http.Error(w, "Username, email, and password are required", http.StatusBadRequest)
+	if req.Email == "" || req.Password == "" {
+		http.Error(w, "email and password are required", http.StatusBadRequest)
 		return
 	}
 
@@ -130,13 +127,6 @@ func (h *Handler) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if username already exists
-	_, err = h.db.GetUserByUsername(r.Context(), req.Username)
-	if err == nil {
-		http.Error(w, "Username already exists", http.StatusConflict)
-		return
-	}
-
 	// Hash password
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
@@ -146,7 +136,6 @@ func (h *Handler) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Create user
 	params := db.CreateUserParams{
-		Username:     req.Username,
 		Email:        req.Email,
 		PasswordHash: string(hashedPassword),
 		Role:         role,
@@ -171,7 +160,6 @@ func (h *Handler) CreateUserHandler(w http.ResponseWriter, r *http.Request) {
 		Message: "User created successfully",
 		Data: UserResponse{
 			ID:        int(user.ID),
-			Username:  user.Username,
 			Email:     user.Email,
 			Role:      string(user.Role),
 			CreatedAt: user.CreatedAt.Time.Format(time.RFC3339),
@@ -196,10 +184,8 @@ func (h *Handler) DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// “Only admin” logic
 
-	// “Only admin” logic    
-
-	/*
 	roleVal := r.Context().Value("user_role")
 	if roleVal == nil {
 		http.Error(w, "Unauthorized (no role)", http.StatusUnauthorized)
@@ -214,10 +200,8 @@ func (h *Handler) DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Forbidden: only admins can delete users", http.StatusForbidden)
 		return
 	}
-	*/
 
 	// Cannot delete yourself
-	/*
 	idVal := r.Context().Value("user_id")
 	if idVal != nil {
 		callerID, ok := idVal.(int)
@@ -226,7 +210,6 @@ func (h *Handler) DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	*/
 
 	// Delete user
 	if err := h.db.DeleteUser(r.Context(), int32(userID)); err != nil {
@@ -240,5 +223,3 @@ func (h *Handler) DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 		Message: "User deleted successfully",
 	})
 }
-	
-

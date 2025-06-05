@@ -54,9 +54,6 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getUserByIDStmt, err = db.PrepareContext(ctx, getUserByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUserByID: %w", err)
 	}
-	if q.getUserByUsernameStmt, err = db.PrepareContext(ctx, getUserByUsername); err != nil {
-		return nil, fmt.Errorf("error preparing query GetUserByUsername: %w", err)
-	}
 	if q.listMeasurementsStmt, err = db.PrepareContext(ctx, listMeasurements); err != nil {
 		return nil, fmt.Errorf("error preparing query ListMeasurements: %w", err)
 	}
@@ -122,11 +119,6 @@ func (q *Queries) Close() error {
 	if q.getUserByIDStmt != nil {
 		if cerr := q.getUserByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getUserByIDStmt: %w", cerr)
-		}
-	}
-	if q.getUserByUsernameStmt != nil {
-		if cerr := q.getUserByUsernameStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getUserByUsernameStmt: %w", cerr)
 		}
 	}
 	if q.listMeasurementsStmt != nil {
@@ -198,7 +190,6 @@ type Queries struct {
 	getUserStmt            *sql.Stmt
 	getUserByEmailStmt     *sql.Stmt
 	getUserByIDStmt        *sql.Stmt
-	getUserByUsernameStmt  *sql.Stmt
 	listMeasurementsStmt   *sql.Stmt
 	listUsersStmt          *sql.Stmt
 	updateClientConfigStmt *sql.Stmt
@@ -219,7 +210,6 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getUserStmt:            q.getUserStmt,
 		getUserByEmailStmt:     q.getUserByEmailStmt,
 		getUserByIDStmt:        q.getUserByIDStmt,
-		getUserByUsernameStmt:  q.getUserByUsernameStmt,
 		listMeasurementsStmt:   q.listMeasurementsStmt,
 		listUsersStmt:          q.listUsersStmt,
 		updateClientConfigStmt: q.updateClientConfigStmt,
