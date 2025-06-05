@@ -118,10 +118,11 @@ type SmsTestResult struct {
 	DurationMillis       *int64  `json:"duration_millis,omitempty"`
 }
 
+// Upload response structure matching Kotlin client expectations
 type UploadResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message"`
-	ID      int64  `json:"id,omitempty"`
+	Status           string `json:"status"`            // "success", "error", "partial_success"
+	Message          string `json:"message,omitempty"` // Optional error message
+	RecordsProcessed *int   `json:"recordsProcessed,omitempty"`
 }
 
 // GET /api/v1/config
@@ -269,8 +270,8 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(Response{
-			Success: false,
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
 			Message: "Invalid request body",
 		})
 		return
@@ -279,8 +280,8 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 	if req.DeviceID == "" {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(Response{
-			Success: false,
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
 			Message: "Device ID is required",
 		})
 		return
@@ -289,22 +290,27 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 	if len(req.Measurements) == 0 {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(Response{
-			Success: false,
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
 			Message: "At least one measurement is required",
 		})
 		return
 	}
 
+	processedCount := 0
+	hasErrors := false
+
 	// Process each measurement
 	for i, m := range req.Measurements {
 		// Validate timestamp
 		if m.Timestamp <= 0 {
+			hasErrors = true
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(Response{
-				Success: false,
-				Message: fmt.Sprintf("Invalid timestamp in measurement %d", i+1),
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Invalid timestamp in measurement %d", i+1),
+				RecordsProcessed: &processedCount,
 			})
 			return
 		}
@@ -312,22 +318,26 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 		// Validate coordinates if provided
 		if m.Latitude != nil {
 			if *m.Latitude < -90 || *m.Latitude > 90 {
+				hasErrors = true
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(Response{
-					Success: false,
-					Message: fmt.Sprintf("Invalid latitude in measurement %d: must be between -90 and 90", i+1),
+				json.NewEncoder(w).Encode(UploadResponse{
+					Status:           "partial_success",
+					Message:          fmt.Sprintf("Invalid latitude in measurement %d: must be between -90 and 90", i+1),
+					RecordsProcessed: &processedCount,
 				})
 				return
 			}
 		}
 		if m.Longitude != nil {
 			if *m.Longitude < -180 || *m.Longitude > 180 {
+				hasErrors = true
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(Response{
-					Success: false,
-					Message: fmt.Sprintf("Invalid longitude in measurement %d: must be between -180 and 180", i+1),
+				json.NewEncoder(w).Encode(UploadResponse{
+					Status:           "partial_success",
+					Message:          fmt.Sprintf("Invalid longitude in measurement %d: must be between -180 and 180", i+1),
+					RecordsProcessed: &processedCount,
 				})
 				return
 			}
@@ -340,11 +350,13 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 				"GSM": true, "UMTS": true, "LTE": true, "NR": true,
 			}
 			if !validTechs[*m.CellularTechnology] {
+				hasErrors = true
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(Response{
-					Success: false,
-					Message: fmt.Sprintf("Invalid cellular technology in measurement %d: %s", i+1, *m.CellularTechnology),
+				json.NewEncoder(w).Encode(UploadResponse{
+					Status:           "partial_success",
+					Message:          fmt.Sprintf("Invalid cellular technology in measurement %d: %s", i+1, *m.CellularTechnology),
+					RecordsProcessed: &processedCount,
 				})
 				return
 			}
@@ -353,20 +365,24 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 		// Validate MCCMNC format if provided (should be 5-6 digits)
 		if m.NetworkOperatorMCCMNC != nil {
 			if len(*m.NetworkOperatorMCCMNC) < 5 || len(*m.NetworkOperatorMCCMNC) > 6 {
+				hasErrors = true
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(Response{
-					Success: false,
-					Message: fmt.Sprintf("Invalid MCCMNC format in measurement %d: must be 5-6 digits", i+1),
+				json.NewEncoder(w).Encode(UploadResponse{
+					Status:           "partial_success",
+					Message:          fmt.Sprintf("Invalid MCCMNC format in measurement %d: must be 5-6 digits", i+1),
+					RecordsProcessed: &processedCount,
 				})
 				return
 			}
 			if _, err := strconv.Atoi(*m.NetworkOperatorMCCMNC); err != nil {
+				hasErrors = true
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(Response{
-					Success: false,
-					Message: fmt.Sprintf("Invalid MCCMNC format in measurement %d: must contain only digits", i+1),
+				json.NewEncoder(w).Encode(UploadResponse{
+					Status:           "partial_success",
+					Message:          fmt.Sprintf("Invalid MCCMNC format in measurement %d: must contain only digits", i+1),
+					RecordsProcessed: &processedCount,
 				})
 				return
 			}
@@ -375,11 +391,13 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 		// Validate signal strength if provided (typically -140 to -40 dBm)
 		if m.SignalStrength != nil {
 			if *m.SignalStrength < -140 || *m.SignalStrength > -30 {
+				hasErrors = true
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(Response{
-					Success: false,
-					Message: fmt.Sprintf("Invalid signal strength in measurement %d: must be between -140 and -30 dBm", i+1),
+				json.NewEncoder(w).Encode(UploadResponse{
+					Status:           "partial_success",
+					Message:          fmt.Sprintf("Invalid signal strength in measurement %d: must be between -140 and -30 dBm", i+1),
+					RecordsProcessed: &processedCount,
 				})
 				return
 			}
@@ -388,11 +406,13 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 		// Validate signal quality if provided (typically 0-100)
 		if m.SignalQuality != nil {
 			if *m.SignalQuality < 0 || *m.SignalQuality > 100 {
+				hasErrors = true
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(Response{
-					Success: false,
-					Message: fmt.Sprintf("Invalid signal quality in measurement %d: must be between 0 and 100", i+1),
+				json.NewEncoder(w).Encode(UploadResponse{
+					Status:           "partial_success",
+					Message:          fmt.Sprintf("Invalid signal quality in measurement %d: must be between 0 and 100", i+1),
+					RecordsProcessed: &processedCount,
 				})
 				return
 			}
@@ -401,11 +421,13 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 		// Validate ARFCN if provided (typically 0-32767)
 		if m.ARFCN != nil {
 			if *m.ARFCN < 0 || *m.ARFCN > 32767 {
+				hasErrors = true
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(Response{
-					Success: false,
-					Message: fmt.Sprintf("Invalid ARFCN in measurement %d: must be between 0 and 32767", i+1),
+				json.NewEncoder(w).Encode(UploadResponse{
+					Status:           "partial_success",
+					Message:          fmt.Sprintf("Invalid ARFCN in measurement %d: must be between 0 and 32767", i+1),
+					RecordsProcessed: &processedCount,
 				})
 				return
 			}
@@ -413,40 +435,48 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 
 		// Validate LAC, RAC, TAC if provided (should be positive)
 		if m.LAC != nil && *m.LAC < 0 {
+			hasErrors = true
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(Response{
-				Success: false,
-				Message: fmt.Sprintf("Invalid LAC in measurement %d: must be positive", i+1),
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Invalid LAC in measurement %d: must be positive", i+1),
+				RecordsProcessed: &processedCount,
 			})
 			return
 		}
 		if m.RAC != nil && *m.RAC < 0 {
+			hasErrors = true
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(Response{
-				Success: false,
-				Message: fmt.Sprintf("Invalid RAC in measurement %d: must be positive", i+1),
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Invalid RAC in measurement %d: must be positive", i+1),
+				RecordsProcessed: &processedCount,
 			})
 			return
 		}
 		if m.TAC != nil && *m.TAC < 0 {
+			hasErrors = true
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(Response{
-				Success: false,
-				Message: fmt.Sprintf("Invalid TAC in measurement %d: must be positive", i+1),
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Invalid TAC in measurement %d: must be positive", i+1),
+				RecordsProcessed: &processedCount,
 			})
 			return
 		}
 
 		// Validate Cell ID if provided (should be positive)
 		if m.CellID != nil && *m.CellID < 0 {
+			hasErrors = true
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(Response{
-				Success: false,
-				Message: fmt.Sprintf("Invalid Cell ID in measurement %d: must be positive", i+1),
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Invalid Cell ID in measurement %d: must be positive", i+1),
+				RecordsProcessed: &processedCount,
 			})
 			return
 		}
@@ -472,20 +502,30 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 
 		_, err := h.db.CreateNetworkMeasurement(r.Context(), params)
 		if err != nil {
+			hasErrors = true
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(Response{
-				Success: false,
-				Message: "Failed to store measurement",
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          "Failed to store measurement",
+				RecordsProcessed: &processedCount,
 			})
 			return
 		}
+
+		processedCount++
+	}
+
+	// Determine final status
+	status := "success"
+	if hasErrors {
+		status = "partial_success"
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{
-		Success: true,
-		Message: "Measurements uploaded successfully",
+	json.NewEncoder(w).Encode(UploadResponse{
+		Status:           status,
+		RecordsProcessed: &processedCount,
 	})
 }
 
@@ -495,9 +535,19 @@ func (h *Handler) UploadHttpTestsHandler(w http.ResponseWriter, r *http.Request)
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(Response{
-			Success: false,
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
 			Message: "Invalid request body",
+		})
+		return
+	}
+
+	if req.DeviceID == "" {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
+			Message: "Device ID is required",
 		})
 		return
 	}
@@ -506,14 +556,105 @@ func (h *Handler) UploadHttpTestsHandler(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(Response{
-			Success: false,
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
 			Message: "Invalid test results format",
 		})
 		return
 	}
 
-	for _, result := range results {
+	if len(results) == 0 {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(UploadResponse{
+			Status:  "error",
+			Message: "At least one test result is required",
+		})
+		return
+	}
+
+	processedCount := 0
+	hasErrors := false
+
+	for i, result := range results {
+		// Validate test type
+		if result.Type != "DOWNLOAD" && result.Type != "UPLOAD" {
+			hasErrors = true
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Invalid test type in result %d: must be 'DOWNLOAD' or 'UPLOAD'", i+1),
+				RecordsProcessed: &processedCount,
+			})
+			return
+		}
+
+		// Validate URL
+		if result.URL == "" {
+			hasErrors = true
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("URL is required in result %d", i+1),
+				RecordsProcessed: &processedCount,
+			})
+			return
+		}
+
+		// Validate timestamp
+		if result.Timestamp <= 0 {
+			hasErrors = true
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Invalid timestamp in result %d", i+1),
+				RecordsProcessed: &processedCount,
+			})
+			return
+		}
+
+		// Validate throughput if provided
+		if result.ThroughputKbps != nil && *result.ThroughputKbps < 0 {
+			hasErrors = true
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Invalid throughput in result %d: must be non-negative", i+1),
+				RecordsProcessed: &processedCount,
+			})
+			return
+		}
+
+		// Validate duration if provided
+		if result.DurationMillis != nil && *result.DurationMillis < 0 {
+			hasErrors = true
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Invalid duration in result %d: must be non-negative", i+1),
+				RecordsProcessed: &processedCount,
+			})
+			return
+		}
+
+		// Validate bytes transferred if provided
+		if result.BytesTransferred != nil && *result.BytesTransferred < 0 {
+			hasErrors = true
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          fmt.Sprintf("Invalid bytes transferred in result %d: must be non-negative", i+1),
+				RecordsProcessed: &processedCount,
+			})
+			return
+		}
+
 		params := db.CreateHttpTestResultParams{
 			DeviceID:         req.DeviceID,
 			Timestamp:        time.Unix(result.Timestamp, 0),
@@ -528,20 +669,30 @@ func (h *Handler) UploadHttpTestsHandler(w http.ResponseWriter, r *http.Request)
 
 		_, err := h.db.CreateHttpTestResult(r.Context(), params)
 		if err != nil {
+			hasErrors = true
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(Response{
-				Success: false,
-				Message: "Failed to store HTTP test result",
+			json.NewEncoder(w).Encode(UploadResponse{
+				Status:           "partial_success",
+				Message:          "Failed to store HTTP test result",
+				RecordsProcessed: &processedCount,
 			})
 			return
 		}
+
+		processedCount++
+	}
+
+	// Determine final status
+	status := "success"
+	if hasErrors {
+		status = "partial_success"
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(Response{
-		Success: true,
-		Message: "HTTP test results uploaded successfully",
+	json.NewEncoder(w).Encode(UploadResponse{
+		Status:           status,
+		RecordsProcessed: &processedCount,
 	})
 }
 
