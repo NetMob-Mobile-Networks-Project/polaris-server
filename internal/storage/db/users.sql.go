@@ -23,29 +23,22 @@ func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
 
 const createUser = `-- name: CreateUser :exec
 INSERT INTO users (
-    username,
     email,
     password_hash,
     role
 ) VALUES (
-    ?, ?, ?, ?
+    ?, ?, ?
 )
 `
 
 type CreateUserParams struct {
-	Username     string    `json:"username"`
 	Email        string    `json:"email"`
 	PasswordHash string    `json:"password_hash"`
 	Role         UsersRole `json:"role"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
-	_, err := q.exec(ctx, q.createUserStmt, createUser,
-		arg.Username,
-		arg.Email,
-		arg.PasswordHash,
-		arg.Role,
-	)
+	_, err := q.exec(ctx, q.createUserStmt, createUser, arg.Email, arg.PasswordHash, arg.Role)
 	return err
 }
 
@@ -64,7 +57,7 @@ func (q *Queries) DeleteUser(ctx context.Context, id int32) error {
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, username, email, password_hash, role, created_at, updated_at FROM users
+SELECT id, email, password_hash, role, created_at, updated_at FROM users
 WHERE id = ? LIMIT 1
 `
 
@@ -73,7 +66,6 @@ func (q *Queries) GetUser(ctx context.Context, id int32) (User, error) {
 	var i User
 	err := row.Scan(
 		&i.ID,
-		&i.Username,
 		&i.Email,
 		&i.PasswordHash,
 		&i.Role,
@@ -84,7 +76,7 @@ func (q *Queries) GetUser(ctx context.Context, id int32) (User, error) {
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, username, email, password_hash, role, created_at, updated_at FROM users
+SELECT id, email, password_hash, role, created_at, updated_at FROM users
 WHERE email = ? LIMIT 1
 `
 
@@ -93,7 +85,6 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 	var i User
 	err := row.Scan(
 		&i.ID,
-		&i.Username,
 		&i.Email,
 		&i.PasswordHash,
 		&i.Role,
@@ -104,7 +95,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, username, email, password_hash, role, created_at, updated_at FROM users
+SELECT id, email, password_hash, role, created_at, updated_at FROM users
 WHERE id = ? LIMIT 1
 `
 
@@ -113,27 +104,6 @@ func (q *Queries) GetUserByID(ctx context.Context, id int32) (User, error) {
 	var i User
 	err := row.Scan(
 		&i.ID,
-		&i.Username,
-		&i.Email,
-		&i.PasswordHash,
-		&i.Role,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, email, password_hash, role, created_at, updated_at FROM users
-WHERE username = ? LIMIT 1
-`
-
-func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
-	row := q.queryRow(ctx, q.getUserByUsernameStmt, getUserByUsername, username)
-	var i User
-	err := row.Scan(
-		&i.ID,
-		&i.Username,
 		&i.Email,
 		&i.PasswordHash,
 		&i.Role,
@@ -144,7 +114,7 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, username, email, role, created_at, updated_at
+SELECT id, email, role, created_at, updated_at
 FROM users
 ORDER BY created_at DESC
 LIMIT ? OFFSET ?
@@ -157,7 +127,6 @@ type ListUsersParams struct {
 
 type ListUsersRow struct {
 	ID        int32        `json:"id"`
-	Username  string       `json:"username"`
 	Email     string       `json:"email"`
 	Role      UsersRole    `json:"role"`
 	CreatedAt sql.NullTime `json:"created_at"`
@@ -175,7 +144,6 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]ListUse
 		var i ListUsersRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.Username,
 			&i.Email,
 			&i.Role,
 			&i.CreatedAt,
@@ -197,7 +165,6 @@ func (q *Queries) ListUsers(ctx context.Context, arg ListUsersParams) ([]ListUse
 const updateUserExec = `-- name: UpdateUserExec :exec
 UPDATE users
 SET 
-    username = COALESCE(?, username),
     email = COALESCE(?, email),
     password_hash = COALESCE(?, password_hash),
     role = COALESCE(?, role)
@@ -205,7 +172,6 @@ WHERE id = ?
 `
 
 type UpdateUserExecParams struct {
-	Username     string    `json:"username"`
 	Email        string    `json:"email"`
 	PasswordHash string    `json:"password_hash"`
 	Role         UsersRole `json:"role"`
@@ -214,7 +180,6 @@ type UpdateUserExecParams struct {
 
 func (q *Queries) UpdateUserExec(ctx context.Context, arg UpdateUserExecParams) error {
 	_, err := q.exec(ctx, q.updateUserExecStmt, updateUserExec,
-		arg.Username,
 		arg.Email,
 		arg.PasswordHash,
 		arg.Role,

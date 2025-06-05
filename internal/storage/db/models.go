@@ -54,7 +54,6 @@ func (ns NullUsersRole) Value() (driver.Value, error) {
 
 type User struct {
 	ID           int32        `json:"id"`
-	Username     string       `json:"username"`
 	Email        string       `json:"email"`
 	PasswordHash string       `json:"password_hash"`
 	Role         UsersRole    `json:"role"`
