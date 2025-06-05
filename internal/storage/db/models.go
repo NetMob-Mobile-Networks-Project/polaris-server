@@ -7,7 +7,9 @@ package db
 import (
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
 	"fmt"
+	"time"
 )
 
 type UsersRole string
@@ -50,6 +52,41 @@ func (ns NullUsersRole) Value() (driver.Value, error) {
 		return nil, nil
 	}
 	return string(ns.UsersRole), nil
+}
+
+type ClientConfig struct {
+	ID                      int32           `json:"id"`
+	SamplingIntervalSeconds int32           `json:"sampling_interval_seconds"`
+	TestTypes               json.RawMessage `json:"test_types"`
+	Thresholds              json.RawMessage `json:"thresholds"`
+	CreatedAt               sql.NullTime    `json:"created_at"`
+	UpdatedAt               sql.NullTime    `json:"updated_at"`
+}
+
+type Measurement struct {
+	ID            int32          `json:"id"`
+	Timestamp     time.Time      `json:"timestamp"`
+	Latitude      string         `json:"latitude"`
+	Longitude     string         `json:"longitude"`
+	NetworkType   string         `json:"network_type"`
+	PlmnID        sql.NullString `json:"plmn_id"`
+	Lac           sql.NullString `json:"lac"`
+	Tac           sql.NullString `json:"tac"`
+	CellID        sql.NullString `json:"cell_id"`
+	Arfcn         sql.NullInt32  `json:"arfcn"`
+	FrequencyBand sql.NullString `json:"frequency_band"`
+	Rssi          sql.NullInt32  `json:"rssi"`
+	EcNo          sql.NullString `json:"ec_no"`
+	Rscp          sql.NullInt32  `json:"rscp"`
+	Rsrq          sql.NullString `json:"rsrq"`
+	Rsrp          sql.NullInt32  `json:"rsrp"`
+	DownloadSpeed sql.NullString `json:"download_speed"`
+	UploadSpeed   sql.NullString `json:"upload_speed"`
+	PingMs        sql.NullInt32  `json:"ping_ms"`
+	DnsMs         sql.NullInt32  `json:"dns_ms"`
+	HttpLatencyMs sql.NullInt32  `json:"http_latency_ms"`
+	SmsDeliveryMs sql.NullInt32  `json:"sms_delivery_ms"`
+	CreatedAt     sql.NullTime   `json:"created_at"`
 }
 
 type User struct {

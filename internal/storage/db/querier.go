@@ -6,19 +6,26 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
 
 type Querier interface {
+	CountMeasurements(ctx context.Context, arg CountMeasurementsParams) (int64, error)
 	CountUsers(ctx context.Context) (int64, error)
+	CreateMeasurement(ctx context.Context, arg CreateMeasurementParams) (sql.Result, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) error
 	// -- name: GetUserByID :one
 	// SELECT * FROM users WHERE id = ?;
 	DeleteUser(ctx context.Context, id int32) error
+	GetClientConfig(ctx context.Context) (ClientConfig, error)
+	GetMeasurement(ctx context.Context, id int32) (Measurement, error)
 	GetUser(ctx context.Context, id int32) (User, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int32) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
+	ListMeasurements(ctx context.Context, arg ListMeasurementsParams) ([]Measurement, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]ListUsersRow, error)
+	UpdateClientConfig(ctx context.Context, arg UpdateClientConfigParams) error
 	UpdateUserExec(ctx context.Context, arg UpdateUserExecParams) error
 }
 

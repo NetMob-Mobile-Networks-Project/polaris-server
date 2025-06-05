@@ -24,14 +24,26 @@ func New(db DBTX) *Queries {
 func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	q := Queries{db: db}
 	var err error
+	if q.countMeasurementsStmt, err = db.PrepareContext(ctx, countMeasurements); err != nil {
+		return nil, fmt.Errorf("error preparing query CountMeasurements: %w", err)
+	}
 	if q.countUsersStmt, err = db.PrepareContext(ctx, countUsers); err != nil {
 		return nil, fmt.Errorf("error preparing query CountUsers: %w", err)
+	}
+	if q.createMeasurementStmt, err = db.PrepareContext(ctx, createMeasurement); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateMeasurement: %w", err)
 	}
 	if q.createUserStmt, err = db.PrepareContext(ctx, createUser); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateUser: %w", err)
 	}
 	if q.deleteUserStmt, err = db.PrepareContext(ctx, deleteUser); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteUser: %w", err)
+	}
+	if q.getClientConfigStmt, err = db.PrepareContext(ctx, getClientConfig); err != nil {
+		return nil, fmt.Errorf("error preparing query GetClientConfig: %w", err)
+	}
+	if q.getMeasurementStmt, err = db.PrepareContext(ctx, getMeasurement); err != nil {
+		return nil, fmt.Errorf("error preparing query GetMeasurement: %w", err)
 	}
 	if q.getUserStmt, err = db.PrepareContext(ctx, getUser); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUser: %w", err)
@@ -45,8 +57,14 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getUserByUsernameStmt, err = db.PrepareContext(ctx, getUserByUsername); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUserByUsername: %w", err)
 	}
+	if q.listMeasurementsStmt, err = db.PrepareContext(ctx, listMeasurements); err != nil {
+		return nil, fmt.Errorf("error preparing query ListMeasurements: %w", err)
+	}
 	if q.listUsersStmt, err = db.PrepareContext(ctx, listUsers); err != nil {
 		return nil, fmt.Errorf("error preparing query ListUsers: %w", err)
+	}
+	if q.updateClientConfigStmt, err = db.PrepareContext(ctx, updateClientConfig); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateClientConfig: %w", err)
 	}
 	if q.updateUserExecStmt, err = db.PrepareContext(ctx, updateUserExec); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateUserExec: %w", err)
@@ -56,9 +74,19 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 
 func (q *Queries) Close() error {
 	var err error
+	if q.countMeasurementsStmt != nil {
+		if cerr := q.countMeasurementsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing countMeasurementsStmt: %w", cerr)
+		}
+	}
 	if q.countUsersStmt != nil {
 		if cerr := q.countUsersStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing countUsersStmt: %w", cerr)
+		}
+	}
+	if q.createMeasurementStmt != nil {
+		if cerr := q.createMeasurementStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createMeasurementStmt: %w", cerr)
 		}
 	}
 	if q.createUserStmt != nil {
@@ -69,6 +97,16 @@ func (q *Queries) Close() error {
 	if q.deleteUserStmt != nil {
 		if cerr := q.deleteUserStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deleteUserStmt: %w", cerr)
+		}
+	}
+	if q.getClientConfigStmt != nil {
+		if cerr := q.getClientConfigStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getClientConfigStmt: %w", cerr)
+		}
+	}
+	if q.getMeasurementStmt != nil {
+		if cerr := q.getMeasurementStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getMeasurementStmt: %w", cerr)
 		}
 	}
 	if q.getUserStmt != nil {
@@ -91,9 +129,19 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getUserByUsernameStmt: %w", cerr)
 		}
 	}
+	if q.listMeasurementsStmt != nil {
+		if cerr := q.listMeasurementsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listMeasurementsStmt: %w", cerr)
+		}
+	}
 	if q.listUsersStmt != nil {
 		if cerr := q.listUsersStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing listUsersStmt: %w", cerr)
+		}
+	}
+	if q.updateClientConfigStmt != nil {
+		if cerr := q.updateClientConfigStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateClientConfigStmt: %w", cerr)
 		}
 	}
 	if q.updateUserExecStmt != nil {
@@ -138,31 +186,43 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                    DBTX
-	tx                    *sql.Tx
-	countUsersStmt        *sql.Stmt
-	createUserStmt        *sql.Stmt
-	deleteUserStmt        *sql.Stmt
-	getUserStmt           *sql.Stmt
-	getUserByEmailStmt    *sql.Stmt
-	getUserByIDStmt       *sql.Stmt
-	getUserByUsernameStmt *sql.Stmt
-	listUsersStmt         *sql.Stmt
-	updateUserExecStmt    *sql.Stmt
+	db                     DBTX
+	tx                     *sql.Tx
+	countMeasurementsStmt  *sql.Stmt
+	countUsersStmt         *sql.Stmt
+	createMeasurementStmt  *sql.Stmt
+	createUserStmt         *sql.Stmt
+	deleteUserStmt         *sql.Stmt
+	getClientConfigStmt    *sql.Stmt
+	getMeasurementStmt     *sql.Stmt
+	getUserStmt            *sql.Stmt
+	getUserByEmailStmt     *sql.Stmt
+	getUserByIDStmt        *sql.Stmt
+	getUserByUsernameStmt  *sql.Stmt
+	listMeasurementsStmt   *sql.Stmt
+	listUsersStmt          *sql.Stmt
+	updateClientConfigStmt *sql.Stmt
+	updateUserExecStmt     *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                    tx,
-		tx:                    tx,
-		countUsersStmt:        q.countUsersStmt,
-		createUserStmt:        q.createUserStmt,
-		deleteUserStmt:        q.deleteUserStmt,
-		getUserStmt:           q.getUserStmt,
-		getUserByEmailStmt:    q.getUserByEmailStmt,
-		getUserByIDStmt:       q.getUserByIDStmt,
-		getUserByUsernameStmt: q.getUserByUsernameStmt,
-		listUsersStmt:         q.listUsersStmt,
-		updateUserExecStmt:    q.updateUserExecStmt,
+		db:                     tx,
+		tx:                     tx,
+		countMeasurementsStmt:  q.countMeasurementsStmt,
+		countUsersStmt:         q.countUsersStmt,
+		createMeasurementStmt:  q.createMeasurementStmt,
+		createUserStmt:         q.createUserStmt,
+		deleteUserStmt:         q.deleteUserStmt,
+		getClientConfigStmt:    q.getClientConfigStmt,
+		getMeasurementStmt:     q.getMeasurementStmt,
+		getUserStmt:            q.getUserStmt,
+		getUserByEmailStmt:     q.getUserByEmailStmt,
+		getUserByIDStmt:        q.getUserByIDStmt,
+		getUserByUsernameStmt:  q.getUserByUsernameStmt,
+		listMeasurementsStmt:   q.listMeasurementsStmt,
+		listUsersStmt:          q.listUsersStmt,
+		updateClientConfigStmt: q.updateClientConfigStmt,
+		updateUserExecStmt:     q.updateUserExecStmt,
 	}
 }
