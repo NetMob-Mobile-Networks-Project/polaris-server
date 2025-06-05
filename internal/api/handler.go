@@ -29,9 +29,11 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	apiV1 := router.PathPrefix("/api/v1").Subrouter()
 
 	// Public routes
-	apiV1.HandleFunc("/auth/signup", h.SignupHandler).Methods("POST")
 	apiV1.HandleFunc("/auth/login", h.LoginHandler).Methods("POST")
-	apiV1.HandleFunc("/auth/logout", h.LogoutHandler).Methods("POST")
+
+	// Client APIs
+	apiV1.HandleFunc("/data/upload", h.UploadClientDataHandler).Methods("POST")
+	apiV1.HandleFunc("/config", h.GetClientConfigHandler).Methods("GET")
 
 	// Protected routes (require authentication)
 	protected := apiV1.PathPrefix("").Subrouter()
@@ -39,10 +41,6 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 
 	// Auth APIs
 	protected.HandleFunc("/auth/me", h.GetUserProfileHandler).Methods("GET")
-
-	// Client APIs
-	protected.HandleFunc("/data/upload", h.UploadClientDataHandler).Methods("POST")
-	protected.HandleFunc("/config", h.GetClientConfigHandler).Methods("GET")
 
 	// Dashboard APIs
 	protected.HandleFunc("/metrics/map", h.GetHeatmapMetricsHandler).Methods("GET")

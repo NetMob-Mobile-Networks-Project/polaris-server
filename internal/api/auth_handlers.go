@@ -9,8 +9,6 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/crypto/bcrypt"
-
-	"github.com/NetMob-Mobile-Networks-Project/polaris-server/internal/storage/db"
 )
 
 // Request/Response structures
@@ -140,17 +138,6 @@ func (h *Handler) GetUserProfileHandler(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-// POST /api/auth/logout
-// Description: Invalidate JWT token (client-side only)
-func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
-	// Since we're using JWTs, we don't need to do anything server-side
-	// The client should remove the token from storage
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"message": "Logged out successfully",
-	})
-}
-
 // Middleware to validate JWT token
 func (h *Handler) AuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -189,74 +176,3 @@ func (h *Handler) AuthMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-// POST /api/auth/signup
-// Description: Public endpoint for user registration
-func (h *Handler) SignupHandler(w http.ResponseWriter, r *http.Request) {
-	var req SignupRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	// Validate request
-	if req.Username == "" || req.Email == "" || req.Password == "" {
-		http.Error(w, "Username, email, and password are required", http.StatusBadRequest)
-		return
-	}
-
-	// Check if user already exists
-	_, err := h.db.GetUserByEmail(r.Context(), req.Email)
-	if err == nil {
-		http.Error(w, "User with this email already exists", http.StatusConflict)
-		return
-	}
-
-	// Check if username already exists
-	_, err = h.db.GetUserByUsername(r.Context(), req.Username)
-	if err == nil {
-		http.Error(w, "Username already exists", http.StatusConflict)
-		return
-	}
-
-	// Hash password
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
-	if err != nil {
-		http.Error(w, "Failed to process password", http.StatusInternalServerError)
-		return
-	}
-
-	// Create user (always as regular user)
-	params := db.CreateUserParams{
-		Username:     req.Username,
-		Email:        req.Email,
-		PasswordHash: string(hashedPassword),
-		Role:         db.UsersRoleUser, // Always create as regular user
-	}
-
-	err = h.db.CreateUser(r.Context(), params)
-	if err != nil {
-		http.Error(w, "Failed to create user", http.StatusInternalServerError)
-		return
-	}
-
-	// Get the created user
-	user, err := h.db.GetUserByEmail(r.Context(), req.Email)
-	if err != nil {
-		http.Error(w, "Failed to fetch created user", http.StatusInternalServerError)
-		return
-	}
-
-	// Return created user
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(SuccessResponse{
-		Message: "User registered successfully",
-		Data: UserResponse{
-			ID:        int(user.ID),
-			Username:  user.Username,
-			Email:     user.Email,
-			Role:      string(user.Role),
-			CreatedAt: formatTime(user.CreatedAt),
-			UpdatedAt: formatTime(user.UpdatedAt),
-		},
-	})
-}
