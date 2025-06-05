@@ -31,5 +31,5 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd ~/app
-            docker-compose down
+            docker-compose down -v
             docker-compose up --build --force-recreate -d

@@ -186,34 +186,30 @@ func (h *Handler) DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	// “Only admin” logic
 
-	/*
-		roleVal := r.Context().Value("user_role")
-		if roleVal == nil {
-			http.Error(w, "Unauthorized (no role)", http.StatusUnauthorized)
-			return
-		}
-		callerRole, ok := roleVal.(string)
-		if !ok {
-			http.Error(w, "Invalid role type", http.StatusInternalServerError)
-			return
-		}
-		if callerRole != "admin" {
-			http.Error(w, "Forbidden: only admins can delete users", http.StatusForbidden)
-			return
-		}
-	*/
+	roleVal := r.Context().Value("user_role")
+	if roleVal == nil {
+		http.Error(w, "Unauthorized (no role)", http.StatusUnauthorized)
+		return
+	}
+	callerRole, ok := roleVal.(string)
+	if !ok {
+		http.Error(w, "Invalid role type", http.StatusInternalServerError)
+		return
+	}
+	if callerRole != "admin" {
+		http.Error(w, "Forbidden: only admins can delete users", http.StatusForbidden)
+		return
+	}
 
 	// Cannot delete yourself
-	/*
-		idVal := r.Context().Value("user_id")
-		if idVal != nil {
-			callerID, ok := idVal.(int)
-			if ok && callerID == userID {
-				http.Error(w, "Cannot delete your own account", http.StatusForbidden)
-				return
-			}
+	idVal := r.Context().Value("user_id")
+	if idVal != nil {
+		callerID, ok := idVal.(int)
+		if ok && callerID == userID {
+			http.Error(w, "Cannot delete your own account", http.StatusForbidden)
+			return
 		}
-	*/
+	}
 
 	// Delete user
 	if err := h.db.DeleteUser(r.Context(), int32(userID)); err != nil {
