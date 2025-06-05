@@ -720,7 +720,7 @@ func (h *Handler) UploadHttpTestsHandler(w http.ResponseWriter, r *http.Request)
 		// Create database parameters with nil checks
 		params := db.CreateHttpTestResultParams{
 			DeviceID:  req.DeviceID,
-			Timestamp: time.Unix(result.Timestamp, 0),
+			Timestamp: time.Unix(result.Timestamp/1000, (result.Timestamp%1000)*1000000), // Convert milliseconds to seconds and nanoseconds
 			Success:   result.Success,
 			TestType:  db.HttpTestResultsTestType(result.Type),
 			Url:       result.URL,
@@ -960,7 +960,7 @@ func (h *Handler) UploadPingTestsHandler(w http.ResponseWriter, r *http.Request)
 		// Create database parameters with nil checks
 		params := db.CreatePingTestResultParams{
 			DeviceID:  req.DeviceID,
-			Timestamp: time.Unix(result.Timestamp, 0),
+			Timestamp: time.Unix(result.Timestamp/1000, (result.Timestamp%1000)*1000000), // Convert milliseconds to seconds and nanoseconds
 			Success:   result.Success,
 			Host:      result.Host,
 		}
