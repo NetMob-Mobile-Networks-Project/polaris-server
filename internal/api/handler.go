@@ -96,7 +96,7 @@ func (h *Handler) RecoverMiddleware(next http.Handler) http.Handler {
 // AdminMiddleware ensures the user has admin role
 func (h *Handler) AdminMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		role, ok := r.Context().Value("user_role").(string)
+		role, ok := r.Context().Value(userRoleKey).(string)
 		if !ok || role != "admin" {
 			http.Error(w, "Forbidden: admin access required", http.StatusForbidden)
 			return

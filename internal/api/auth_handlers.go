@@ -11,6 +11,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// Context key types
+type contextKey string
+
+const (
+	userIDKey   contextKey = "user_id"
+	userRoleKey contextKey = "user_role"
+)
+
 // Request/Response structures
 type LoginRequest struct {
 	Email    string `json:"email"`
@@ -104,7 +112,7 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 // Description: Return authenticated user's profile
 func (h *Handler) GetUserProfileHandler(w http.ResponseWriter, r *http.Request) {
 	// Get user from context (set by auth middleware)
-	userID, ok := r.Context().Value("user_id").(int32)
+	userID, ok := r.Context().Value(userIDKey).(int32)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -157,8 +165,8 @@ func (h *Handler) AuthMiddleware(next http.Handler) http.Handler {
 
 		// Add user info to context
 		ctx := r.Context()
-		ctx = context.WithValue(ctx, "user_id", claims.UserID)
-		ctx = context.WithValue(ctx, "user_role", claims.Role)
+		ctx = context.WithValue(ctx, userIDKey, claims.UserID)
+		ctx = context.WithValue(ctx, userRoleKey, claims.Role)
 
 		// Call next handler with updated context
 		next.ServeHTTP(w, r.WithContext(ctx))
