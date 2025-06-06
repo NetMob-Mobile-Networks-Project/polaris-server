@@ -184,9 +184,9 @@ func (h *Handler) DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// “Only admin” logic
+	// "Only admin" logic
 
-	roleVal := r.Context().Value("user_role")
+	roleVal := r.Context().Value(userRoleKey)
 	if roleVal == nil {
 		http.Error(w, "Unauthorized (no role)", http.StatusUnauthorized)
 		return
@@ -202,10 +202,10 @@ func (h *Handler) DeleteUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Cannot delete yourself
-	idVal := r.Context().Value("user_id")
+	idVal := r.Context().Value(userIDKey)
 	if idVal != nil {
-		callerID, ok := idVal.(int)
-		if ok && callerID == userID {
+		callerID, ok := idVal.(int32)
+		if ok && int(callerID) == userID {
 			http.Error(w, "Cannot delete your own account", http.StatusForbidden)
 			return
 		}

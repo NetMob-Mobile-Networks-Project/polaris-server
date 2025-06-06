@@ -76,31 +76,3 @@ func (h *Handler) healthCheck(w http.ResponseWriter, r *http.Request) {
 		"status": "ok",
 	})
 }
-
-func (h *Handler) RecoverMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		defer func() {
-			if err := recover(); err != nil {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(UploadResponse{
-					Status:  "error",
-					Message: "Internal server error",
-				})
-			}
-		}()
-		next.ServeHTTP(w, r)
-	})
-}
-
-// AdminMiddleware ensures the user has admin role
-func (h *Handler) AdminMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		role, ok := r.Context().Value("user_role").(string)
-		if !ok || role != "admin" {
-			http.Error(w, "Forbidden: admin access required", http.StatusForbidden)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
