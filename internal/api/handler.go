@@ -49,9 +49,14 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	protected.HandleFunc("/auth/me", h.GetUserProfileHandler).Methods("GET")
 
 	// Dashboard APIs
-	protected.HandleFunc("/metrics/map", h.GetHeatmapMetricsHandler).Methods("GET")
-	protected.HandleFunc("/metrics/table", h.GetTableMetricsHandler).Methods("GET")
-	protected.HandleFunc("/metrics/chart", h.GetChartMetricsHandler).Methods("GET")
+	protected.HandleFunc("/metrics/avg-down-speed", h.GetAvgDownSpeedHandler).Methods("GET")
+	protected.HandleFunc("/metrics/avg-up-speed", h.GetAvgUpSpeedHandler).Methods("GET")
+	protected.HandleFunc("/metrics/avg-latency", h.GetAvgLatencyHandler).Methods("GET")
+	protected.HandleFunc("/metrics/network-availability", h.GetNetworkAvailabilityHandler).Methods("GET")
+	protected.HandleFunc("/metrics/network-histogram", h.GetNetworkHistogramHandler).Methods("GET")
+	protected.HandleFunc("/metrics/network-distribution", h.GetNetworkDistributionHandler).Methods("GET")
+	protected.HandleFunc("/metrics/map-data", h.GetMapDataHandler).Methods("GET")
+	protected.HandleFunc("/metrics/detailed-list", h.GetDetailedListMetricsHandler).Methods("GET")
 
 	// Export APIs
 	protected.HandleFunc("/export/csv", h.ExportCSVHandler).Methods("GET")
