@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -20,8 +21,8 @@ type Response struct {
 
 // Client configuration structures
 type ClientConfigResponse struct {
-	SamplingIntervalSeconds int      `json:"sampling_interval_seconds"`
-	TestTypes               []string `json:"test_types"`
+	SamplingIntervalSeconds int      `json:"samplingIntervalSeconds"`
+	TestTypes               []string `json:"testTypes"`
 }
 
 // Upload response structure matching Kotlin client expectations
@@ -84,8 +85,8 @@ func (h *Handler) GetClientConfigHandler(w http.ResponseWriter, r *http.Request)
 // PUT /api/v1/admin/config
 func (h *Handler) UpdateClientConfigHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		SamplingIntervalSeconds int      `json:"sampling_interval_seconds" validate:"required,min=60,max=3600"`
-		TestTypes               []string `json:"test_types" validate:"required,min=1,dive,oneof=http ping dns web sms"`
+		SamplingIntervalSeconds int      `json:"samplingIntervalSeconds" validate:"required,min=60,max=3600"`
+		TestTypes               []string `json:"testTypes" validate:"required,min=1,dive,oneof=http ping dns web sms"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
@@ -147,23 +148,23 @@ func (h *Handler) UpdateClientConfigHandler(w http.ResponseWriter, r *http.Reque
 // POST /api/v1/measurements/upload
 func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		DeviceID     string `json:"device_id"`
+		DeviceID     string `json:"deviceId"`
 		Measurements []struct {
 			ID                    *int64            `json:"id,omitempty"`
 			Timestamp             int64             `json:"timestamp"`
 			Latitude              *float64          `json:"latitude,omitempty"`
 			Longitude             *float64          `json:"longitude,omitempty"`
-			CellularTechnology    *string           `json:"cellular_technology,omitempty"`
-			NetworkOperatorName   *string           `json:"network_operator_name,omitempty"`
-			NetworkOperatorMCCMNC *string           `json:"network_operator_mccmnc,omitempty"`
+			CellularTechnology    *string           `json:"cellularTechnology,omitempty"`
+			NetworkOperatorName   *string           `json:"networkOperatorName,omitempty"`
+			NetworkOperatorMCCMNC *string           `json:"networkOperatorMCCMNC,omitempty"`
 			LAC                   *int32            `json:"lac,omitempty"`
 			RAC                   *int32            `json:"rac,omitempty"`
 			TAC                   *int32            `json:"tac,omitempty"`
-			CellID                *int64            `json:"cell_id,omitempty"`
+			CellID                *int64            `json:"cellId,omitempty"`
 			ARFCN                 *int32            `json:"arfcn,omitempty"`
-			SignalStrength        *int32            `json:"signal_strength,omitempty"`
-			SignalQuality         *int32            `json:"signal_quality,omitempty"`
-			AdditionalParams      map[string]string `json:"additional_params,omitempty"`
+			SignalStrength        *int32            `json:"signalStrength,omitempty"`
+			SignalQuality         *int32            `json:"signalQuality,omitempty"`
+			AdditionalParams      map[string]string `json:"additionalParams,omitempty"`
 		} `json:"measurements"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -182,7 +183,6 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 	}
 
 	processedCount := 0
-	hasErrors := false
 
 	// Process each measurement
 	for i, m := range req.Measurements {
@@ -240,7 +240,7 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 
 		// Validate signal quality if provided
 		if m.SignalQuality != nil {
-			if *m.SignalQuality < 0 || *m.SignalQuality > 100 {
+			if *m.SignalQuality < -200 || *m.SignalQuality > 200 {
 				writeUploadError(w, http.StatusBadRequest, fmt.Sprintf("Invalid signal quality in measurement %d: must be between 0 and 100", i+1), processedCount)
 				return
 			}
@@ -276,48 +276,60 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 
 		additionalParamsJSON, _ := json.Marshal(m.AdditionalParams)
 		params := db.CreateNetworkMeasurementParams{
-			DeviceID:              req.DeviceID,
-			Timestamp:             time.Unix(m.Timestamp, 0),
-			Latitude:              sql.NullString{String: strconv.FormatFloat(*m.Latitude, 'f', 8, 64), Valid: m.Latitude != nil},
-			Longitude:             sql.NullString{String: strconv.FormatFloat(*m.Longitude, 'f', 8, 64), Valid: m.Longitude != nil},
-			CellularTechnology:    sql.NullString{String: *m.CellularTechnology, Valid: m.CellularTechnology != nil},
-			NetworkOperatorName:   sql.NullString{String: *m.NetworkOperatorName, Valid: m.NetworkOperatorName != nil},
-			NetworkOperatorMccmnc: sql.NullString{String: *m.NetworkOperatorMCCMNC, Valid: m.NetworkOperatorMCCMNC != nil},
-			Lac:                   sql.NullInt32{Int32: *m.LAC, Valid: m.LAC != nil},
-			Rac:                   sql.NullInt32{Int32: *m.RAC, Valid: m.RAC != nil},
-			Tac:                   sql.NullInt32{Int32: *m.TAC, Valid: m.TAC != nil},
-			CellID:                sql.NullInt64{Int64: *m.CellID, Valid: m.CellID != nil},
-			Arfcn:                 sql.NullInt32{Int32: *m.ARFCN, Valid: m.ARFCN != nil},
-			SignalStrength:        sql.NullInt32{Int32: *m.SignalStrength, Valid: m.SignalStrength != nil},
-			SignalQuality:         sql.NullInt32{Int32: *m.SignalQuality, Valid: m.SignalQuality != nil},
-			AdditionalParams:      additionalParamsJSON,
+			DeviceID:  req.DeviceID,
+			Timestamp: time.Unix(m.Timestamp/1000, (m.Timestamp%1000)*int64(time.Millisecond)),
 		}
+
+		if m.Latitude != nil {
+			params.Latitude = sql.NullString{String: strconv.FormatFloat(*m.Latitude, 'f', 8, 64), Valid: true}
+		}
+		if m.Longitude != nil {
+			params.Longitude = sql.NullString{String: strconv.FormatFloat(*m.Longitude, 'f', 8, 64), Valid: true}
+		}
+		if m.CellularTechnology != nil {
+			params.CellularTechnology = sql.NullString{String: *m.CellularTechnology, Valid: true}
+		}
+		if m.NetworkOperatorName != nil {
+			params.NetworkOperatorName = sql.NullString{String: *m.NetworkOperatorName, Valid: true}
+		}
+		if m.NetworkOperatorMCCMNC != nil {
+			params.NetworkOperatorMccmnc = sql.NullString{String: *m.NetworkOperatorMCCMNC, Valid: true}
+		}
+		if m.LAC != nil {
+			params.Lac = sql.NullInt32{Int32: *m.LAC, Valid: true}
+		}
+		if m.RAC != nil {
+			params.Rac = sql.NullInt32{Int32: *m.RAC, Valid: true}
+		}
+		if m.TAC != nil {
+			params.Tac = sql.NullInt32{Int32: *m.TAC, Valid: true}
+		}
+		if m.CellID != nil {
+			params.CellID = sql.NullInt64{Int64: *m.CellID, Valid: true}
+		}
+		if m.ARFCN != nil {
+			params.Arfcn = sql.NullInt32{Int32: *m.ARFCN, Valid: true}
+		}
+		if m.SignalStrength != nil {
+			params.SignalStrength = sql.NullInt32{Int32: *m.SignalStrength, Valid: true}
+		}
+		if m.SignalQuality != nil {
+			params.SignalQuality = sql.NullInt32{Int32: *m.SignalQuality, Valid: true}
+		}
+		params.AdditionalParams = additionalParamsJSON
 
 		_, err := h.db.CreateNetworkMeasurement(r.Context(), params)
 		if err != nil {
-			hasErrors = true
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(UploadResponse{
-				Status:           "partial_success",
-				Message:          "Failed to store measurement",
-				RecordsProcessed: &processedCount,
-			})
+			writeUploadError(w, http.StatusInternalServerError, "Failed to store measurement "+err.Error(), processedCount)
 			return
 		}
 
 		processedCount++
 	}
 
-	// Determine final status
-	status := "success"
-	if hasErrors {
-		status = "partial_success"
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(UploadResponse{
-		Status:           status,
+		Status:           "success",
 		RecordsProcessed: &processedCount,
 	})
 }
@@ -331,12 +343,12 @@ func (h *Handler) UploadHttpTestsHandler(w http.ResponseWriter, r *http.Request)
 			ID               *int64   `json:"id,omitempty"`
 			Timestamp        int64    `json:"timestamp"`
 			Success          bool     `json:"success"`
-			ErrorMessage     *string  `json:"error_message,omitempty"`
+			ErrorMessage     *string  `json:"errorMessage,omitempty"`
 			Type             string   `json:"type"` // "DOWNLOAD" or "UPLOAD"
 			URL              string   `json:"url"`
-			BytesTransferred *int64   `json:"bytes_transferred,omitempty"`
-			DurationMillis   *int64   `json:"duration_millis,omitempty"`
-			ThroughputKbps   *float64 `json:"throughput_kbps,omitempty"`
+			BytesTransferred *int64   `json:"bytesTransferred,omitempty"`
+			DurationMillis   *int64   `json:"durationMillis,omitempty"`
+			ThroughputKbps   *float64 `json:"throughputKbps,omitempty"`
 		} `json:"results"`
 	}
 
@@ -367,7 +379,6 @@ func (h *Handler) UploadHttpTestsHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	processedCount := 0
-	hasErrors := false
 
 	for i, result := range req.Results {
 		// Validate test type
@@ -437,29 +448,16 @@ func (h *Handler) UploadHttpTestsHandler(w http.ResponseWriter, r *http.Request)
 
 		_, err := h.db.CreateHttpTestResult(r.Context(), params)
 		if err != nil {
-			hasErrors = true
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(UploadResponse{
-				Status:           "partial_success",
-				Message:          fmt.Sprintf("Failed to store HTTP test result: %v", err),
-				RecordsProcessed: &processedCount,
-			})
+			writeUploadError(w, http.StatusInternalServerError, "Failed to store HTTP test result "+err.Error(), processedCount)
 			return
 		}
 
 		processedCount++
 	}
 
-	// Determine final status
-	status := "success"
-	if hasErrors {
-		status = "partial_success"
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(UploadResponse{
-		Status:           status,
+		Status:           "success",
 		RecordsProcessed: &processedCount,
 	})
 }
@@ -473,14 +471,14 @@ func (h *Handler) UploadPingTestsHandler(w http.ResponseWriter, r *http.Request)
 			ID                 *int64   `json:"id,omitempty"`
 			Timestamp          int64    `json:"timestamp"`
 			Success            bool     `json:"success"`
-			ErrorMessage       *string  `json:"error_message,omitempty"`
+			ErrorMessage       *string  `json:"errorMessage,omitempty"`
 			Host               string   `json:"host"`
-			PacketsTransmitted *int32   `json:"packets_transmitted,omitempty"`
-			PacketsReceived    *int32   `json:"packets_received,omitempty"`
-			MinRttMillis       *float64 `json:"min_rtt_millis,omitempty"`
-			AvgRttMillis       *float64 `json:"avg_rtt_millis,omitempty"`
-			MaxRttMillis       *float64 `json:"max_rtt_millis,omitempty"`
-			IPAddress          *string  `json:"ip_address,omitempty"`
+			PacketsTransmitted *int32   `json:"packetsTransmitted,omitempty"`
+			PacketsReceived    *int32   `json:"packetsReceived,omitempty"`
+			MinRttMillis       *float64 `json:"minRttMillis,omitempty"`
+			AvgRttMillis       *float64 `json:"avgRttMillis,omitempty"`
+			MaxRttMillis       *float64 `json:"maxRttMillis,omitempty"`
+			IPAddress          *string  `json:"ipAddress,omitempty"`
 		} `json:"results"`
 	}
 
@@ -511,7 +509,6 @@ func (h *Handler) UploadPingTestsHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	processedCount := 0
-	hasErrors := false
 
 	for i, result := range req.Results {
 		// Validate host
@@ -583,29 +580,16 @@ func (h *Handler) UploadPingTestsHandler(w http.ResponseWriter, r *http.Request)
 
 		_, err := h.db.CreatePingTestResult(r.Context(), params)
 		if err != nil {
-			hasErrors = true
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(UploadResponse{
-				Status:           "partial_success",
-				Message:          fmt.Sprintf("Failed to store ping test result: %v", err),
-				RecordsProcessed: &processedCount,
-			})
+			writeUploadError(w, http.StatusInternalServerError, "Failed to store ping test result "+err.Error(), processedCount)
 			return
 		}
 
 		processedCount++
 	}
 
-	// Determine final status
-	status := "success"
-	if hasErrors {
-		status = "partial_success"
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(UploadResponse{
-		Status:           status,
+		Status:           "success",
 		RecordsProcessed: &processedCount,
 	})
 }
@@ -619,10 +603,10 @@ func (h *Handler) UploadDnsTestsHandler(w http.ResponseWriter, r *http.Request) 
 			ID                   *int64   `json:"id,omitempty"`
 			Timestamp            int64    `json:"timestamp"`
 			Success              bool     `json:"success"`
-			ErrorMessage         *string  `json:"error_message,omitempty"`
+			ErrorMessage         *string  `json:"errorMessage,omitempty"`
 			Hostname             string   `json:"hostname"`
-			ResolutionTimeMillis *int64   `json:"resolution_time_millis,omitempty"`
-			ResolvedIPAddresses  []string `json:"resolved_ip_addresses,omitempty"`
+			ResolutionTimeMillis *int64   `json:"resolutionTimeMillis,omitempty"`
+			ResolvedIPAddresses  []string `json:"resolvedIPAddresses,omitempty"`
 		} `json:"results"`
 	}
 
@@ -653,7 +637,6 @@ func (h *Handler) UploadDnsTestsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	processedCount := 0
-	hasErrors := false
 
 	for i, result := range req.Results {
 		// Validate hostname
@@ -692,14 +675,7 @@ func (h *Handler) UploadDnsTestsHandler(w http.ResponseWriter, r *http.Request) 
 		if result.ResolvedIPAddresses != nil {
 			resolvedIPsJSON, err := json.Marshal(result.ResolvedIPAddresses)
 			if err != nil {
-				hasErrors = true
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(UploadResponse{
-					Status:           "partial_success",
-					Message:          fmt.Sprintf("Failed to process resolved IP addresses in result %d", i+1),
-					RecordsProcessed: &processedCount,
-				})
+				writeUploadError(w, http.StatusInternalServerError, "Failed to process resolved IP addresses in result "+err.Error(), processedCount)
 				return
 			}
 			params.ResolvedIpAddresses = resolvedIPsJSON
@@ -707,29 +683,16 @@ func (h *Handler) UploadDnsTestsHandler(w http.ResponseWriter, r *http.Request) 
 
 		_, err := h.db.CreateDnsTestResult(r.Context(), params)
 		if err != nil {
-			hasErrors = true
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(UploadResponse{
-				Status:           "partial_success",
-				Message:          fmt.Sprintf("Failed to store DNS test result: %v", err),
-				RecordsProcessed: &processedCount,
-			})
+			writeUploadError(w, http.StatusInternalServerError, "Failed to store DNS test result "+err.Error(), processedCount)
 			return
 		}
 
 		processedCount++
 	}
 
-	// Determine final status
-	status := "success"
-	if hasErrors {
-		status = "partial_success"
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(UploadResponse{
-		Status:           status,
+		Status:           "success",
 		RecordsProcessed: &processedCount,
 	})
 }
@@ -743,11 +706,11 @@ func (h *Handler) UploadWebTestsHandler(w http.ResponseWriter, r *http.Request) 
 			ID                *int64  `json:"id,omitempty"`
 			Timestamp         int64   `json:"timestamp"`
 			Success           bool    `json:"success"`
-			ErrorMessage      *string `json:"error_message,omitempty"`
+			ErrorMessage      *string `json:"errorMessage,omitempty"`
 			URL               string  `json:"url"`
-			LoadingTimeMillis *int64  `json:"loading_time_millis,omitempty"`
-			ResponseCode      *int32  `json:"response_code,omitempty"`
-			PageSizeBytes     *int64  `json:"page_size_bytes,omitempty"`
+			LoadingTimeMillis *int64  `json:"loadingTimeMillis,omitempty"`
+			ResponseCode      *int32  `json:"responseCode,omitempty"`
+			PageSizeBytes     *int64  `json:"pageSizeBytes,omitempty"`
 		} `json:"results"`
 	}
 
@@ -778,7 +741,6 @@ func (h *Handler) UploadWebTestsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	processedCount := 0
-	hasErrors := false
 
 	for i, result := range req.Results {
 		// Validate URL
@@ -835,29 +797,16 @@ func (h *Handler) UploadWebTestsHandler(w http.ResponseWriter, r *http.Request) 
 
 		_, err := h.db.CreateWebTestResult(r.Context(), params)
 		if err != nil {
-			hasErrors = true
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(UploadResponse{
-				Status:           "partial_success",
-				Message:          fmt.Sprintf("Failed to store web test result: %v", err),
-				RecordsProcessed: &processedCount,
-			})
+			writeUploadError(w, http.StatusInternalServerError, "Failed to store web test result "+err.Error(), processedCount)
 			return
 		}
 
 		processedCount++
 	}
 
-	// Determine final status
-	status := "success"
-	if hasErrors {
-		status = "partial_success"
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(UploadResponse{
-		Status:           status,
+		Status:           "success",
 		RecordsProcessed: &processedCount,
 	})
 }
@@ -871,11 +820,11 @@ func (h *Handler) UploadSmsTestsHandler(w http.ResponseWriter, r *http.Request) 
 			ID                   *int64  `json:"id,omitempty"`
 			Timestamp            int64   `json:"timestamp"`
 			Success              bool    `json:"success"`
-			ErrorMessage         *string `json:"error_message,omitempty"`
-			DestinationAddress   string  `json:"destination_address"`
-			SubmissionTimeMillis *int64  `json:"submission_time_millis,omitempty"`
-			DeliveryTimeMillis   *int64  `json:"delivery_time_millis,omitempty"`
-			DurationMillis       *int64  `json:"duration_millis,omitempty"`
+			ErrorMessage         *string `json:"errorMessage,omitempty"`
+			DestinationAddress   string  `json:"destinationAddress"`
+			SubmissionTimeMillis *int64  `json:"submissionTimeMillis,omitempty"`
+			DeliveryTimeMillis   *int64  `json:"deliveryTimeMillis,omitempty"`
+			DurationMillis       *int64  `json:"durationMillis,omitempty"`
 		} `json:"results"`
 	}
 
@@ -906,7 +855,6 @@ func (h *Handler) UploadSmsTestsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	processedCount := 0
-	hasErrors := false
 
 	for i, result := range req.Results {
 		// Validate destination address
@@ -963,35 +911,24 @@ func (h *Handler) UploadSmsTestsHandler(w http.ResponseWriter, r *http.Request) 
 
 		_, err := h.db.CreateSmsTestResult(r.Context(), params)
 		if err != nil {
-			hasErrors = true
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(UploadResponse{
-				Status:           "partial_success",
-				Message:          fmt.Sprintf("Failed to store SMS test result: %v", err),
-				RecordsProcessed: &processedCount,
-			})
+			writeUploadError(w, http.StatusInternalServerError, "Failed to store SMS test result "+err.Error(), processedCount)
 			return
 		}
 
 		processedCount++
 	}
 
-	// Determine final status
-	status := "success"
-	if hasErrors {
-		status = "partial_success"
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(UploadResponse{
-		Status:           status,
+		Status:           "success",
 		RecordsProcessed: &processedCount,
 	})
 }
 
 // Helper to write a JSON error response
 func writeJSONError(w http.ResponseWriter, status int, message string) {
+	log.Printf("Upload error: %s", message)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(Response{
@@ -1002,6 +939,8 @@ func writeJSONError(w http.ResponseWriter, status int, message string) {
 
 // Helper to write an upload error response
 func writeUploadError(w http.ResponseWriter, status int, message string, processedCount int) {
+	log.Printf("Upload error: %s", message)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(UploadResponse{
