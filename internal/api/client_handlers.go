@@ -21,8 +21,8 @@ type Response struct {
 
 // Client configuration structures
 type ClientConfigResponse struct {
-	SamplingIntervalSeconds int      `json:"sampling_interval_seconds"`
-	TestTypes               []string `json:"test_types"`
+	SamplingIntervalSeconds int      `json:"samplingIntervalSeconds"`
+	TestTypes               []string `json:"testTypes"`
 }
 
 // Upload response structure matching Kotlin client expectations
@@ -85,8 +85,8 @@ func (h *Handler) GetClientConfigHandler(w http.ResponseWriter, r *http.Request)
 // PUT /api/v1/admin/config
 func (h *Handler) UpdateClientConfigHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		SamplingIntervalSeconds int      `json:"sampling_interval_seconds" validate:"required,min=60,max=3600"`
-		TestTypes               []string `json:"test_types" validate:"required,min=1,dive,oneof=http ping dns web sms"`
+		SamplingIntervalSeconds int      `json:"samplingIntervalSeconds" validate:"required,min=60,max=3600"`
+		TestTypes               []string `json:"testTypes" validate:"required,min=1,dive,oneof=http ping dns web sms"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeJSONError(w, http.StatusBadRequest, "Invalid request body")
@@ -241,7 +241,7 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 
 		// Validate signal quality if provided
 		if m.SignalQuality != nil {
-			if *m.SignalQuality < 0 || *m.SignalQuality > 100 {
+			if *m.SignalQuality < -200 || *m.SignalQuality > 200 {
 				writeUploadError(w, http.StatusBadRequest, fmt.Sprintf("Invalid signal quality in measurement %d: must be between 0 and 100", i+1), processedCount)
 				return
 			}
@@ -332,12 +332,12 @@ func (h *Handler) UploadHttpTestsHandler(w http.ResponseWriter, r *http.Request)
 			ID               *int64   `json:"id,omitempty"`
 			Timestamp        int64    `json:"timestamp"`
 			Success          bool     `json:"success"`
-			ErrorMessage     *string  `json:"error_message,omitempty"`
+			ErrorMessage     *string  `json:"errorMessage,omitempty"`
 			Type             string   `json:"type"` // "DOWNLOAD" or "UPLOAD"
 			URL              string   `json:"url"`
-			BytesTransferred *int64   `json:"bytes_transferred,omitempty"`
-			DurationMillis   *int64   `json:"duration_millis,omitempty"`
-			ThroughputKbps   *float64 `json:"throughput_kbps,omitempty"`
+			BytesTransferred *int64   `json:"bytesTransferred,omitempty"`
+			DurationMillis   *int64   `json:"durationMillis,omitempty"`
+			ThroughputKbps   *float64 `json:"throughputKbps,omitempty"`
 		} `json:"results"`
 	}
 
@@ -474,14 +474,14 @@ func (h *Handler) UploadPingTestsHandler(w http.ResponseWriter, r *http.Request)
 			ID                 *int64   `json:"id,omitempty"`
 			Timestamp          int64    `json:"timestamp"`
 			Success            bool     `json:"success"`
-			ErrorMessage       *string  `json:"error_message,omitempty"`
+			ErrorMessage       *string  `json:"errorMessage,omitempty"`
 			Host               string   `json:"host"`
-			PacketsTransmitted *int32   `json:"packets_transmitted,omitempty"`
-			PacketsReceived    *int32   `json:"packets_received,omitempty"`
-			MinRttMillis       *float64 `json:"min_rtt_millis,omitempty"`
-			AvgRttMillis       *float64 `json:"avg_rtt_millis,omitempty"`
-			MaxRttMillis       *float64 `json:"max_rtt_millis,omitempty"`
-			IPAddress          *string  `json:"ip_address,omitempty"`
+			PacketsTransmitted *int32   `json:"packetsTransmitted,omitempty"`
+			PacketsReceived    *int32   `json:"packetsReceived,omitempty"`
+			MinRttMillis       *float64 `json:"minRttMillis,omitempty"`
+			AvgRttMillis       *float64 `json:"avgRttMillis,omitempty"`
+			MaxRttMillis       *float64 `json:"maxRttMillis,omitempty"`
+			IPAddress          *string  `json:"ipAddress,omitempty"`
 		} `json:"results"`
 	}
 
@@ -620,10 +620,10 @@ func (h *Handler) UploadDnsTestsHandler(w http.ResponseWriter, r *http.Request) 
 			ID                   *int64   `json:"id,omitempty"`
 			Timestamp            int64    `json:"timestamp"`
 			Success              bool     `json:"success"`
-			ErrorMessage         *string  `json:"error_message,omitempty"`
+			ErrorMessage         *string  `json:"errorMessage,omitempty"`
 			Hostname             string   `json:"hostname"`
-			ResolutionTimeMillis *int64   `json:"resolution_time_millis,omitempty"`
-			ResolvedIPAddresses  []string `json:"resolved_ip_addresses,omitempty"`
+			ResolutionTimeMillis *int64   `json:"resolutionTimeMillis,omitempty"`
+			ResolvedIPAddresses  []string `json:"resolvedIPAddresses,omitempty"`
 		} `json:"results"`
 	}
 
@@ -744,11 +744,11 @@ func (h *Handler) UploadWebTestsHandler(w http.ResponseWriter, r *http.Request) 
 			ID                *int64  `json:"id,omitempty"`
 			Timestamp         int64   `json:"timestamp"`
 			Success           bool    `json:"success"`
-			ErrorMessage      *string `json:"error_message,omitempty"`
+			ErrorMessage      *string `json:"errorMessage,omitempty"`
 			URL               string  `json:"url"`
-			LoadingTimeMillis *int64  `json:"loading_time_millis,omitempty"`
-			ResponseCode      *int32  `json:"response_code,omitempty"`
-			PageSizeBytes     *int64  `json:"page_size_bytes,omitempty"`
+			LoadingTimeMillis *int64  `json:"loadingTimeMillis,omitempty"`
+			ResponseCode      *int32  `json:"responseCode,omitempty"`
+			PageSizeBytes     *int64  `json:"pageSizeBytes,omitempty"`
 		} `json:"results"`
 	}
 
@@ -872,11 +872,11 @@ func (h *Handler) UploadSmsTestsHandler(w http.ResponseWriter, r *http.Request) 
 			ID                   *int64  `json:"id,omitempty"`
 			Timestamp            int64   `json:"timestamp"`
 			Success              bool    `json:"success"`
-			ErrorMessage         *string `json:"error_message,omitempty"`
-			DestinationAddress   string  `json:"destination_address"`
-			SubmissionTimeMillis *int64  `json:"submission_time_millis,omitempty"`
-			DeliveryTimeMillis   *int64  `json:"delivery_time_millis,omitempty"`
-			DurationMillis       *int64  `json:"duration_millis,omitempty"`
+			ErrorMessage         *string `json:"errorMessage,omitempty"`
+			DestinationAddress   string  `json:"destinationAddress"`
+			SubmissionTimeMillis *int64  `json:"submissionTimeMillis,omitempty"`
+			DeliveryTimeMillis   *int64  `json:"deliveryTimeMillis,omitempty"`
+			DurationMillis       *int64  `json:"durationMillis,omitempty"`
 		} `json:"results"`
 	}
 
