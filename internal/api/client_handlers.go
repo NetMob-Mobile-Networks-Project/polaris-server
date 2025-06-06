@@ -277,7 +277,7 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 		additionalParamsJSON, _ := json.Marshal(m.AdditionalParams)
 		params := db.CreateNetworkMeasurementParams{
 			DeviceID:  req.DeviceID,
-			Timestamp: time.Unix(m.Timestamp, 0),
+			Timestamp: time.Unix(m.Timestamp/1000, (m.Timestamp%1000)*int64(time.Millisecond)),
 		}
 
 		if m.Latitude != nil {
