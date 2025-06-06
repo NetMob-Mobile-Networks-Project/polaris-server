@@ -148,23 +148,23 @@ func (h *Handler) UpdateClientConfigHandler(w http.ResponseWriter, r *http.Reque
 // POST /api/v1/measurements/upload
 func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		DeviceID     string `json:"device_id"`
+		DeviceID     string `json:"deviceId"`
 		Measurements []struct {
 			ID                    *int64            `json:"id,omitempty"`
 			Timestamp             int64             `json:"timestamp"`
 			Latitude              *float64          `json:"latitude,omitempty"`
 			Longitude             *float64          `json:"longitude,omitempty"`
-			CellularTechnology    *string           `json:"cellular_technology,omitempty"`
-			NetworkOperatorName   *string           `json:"network_operator_name,omitempty"`
-			NetworkOperatorMCCMNC *string           `json:"network_operator_mccmnc,omitempty"`
+			CellularTechnology    *string           `json:"cellularTechnology,omitempty"`
+			NetworkOperatorName   *string           `json:"networkOperatorName,omitempty"`
+			NetworkOperatorMCCMNC *string           `json:"networkOperatorMCCMNC,omitempty"`
 			LAC                   *int32            `json:"lac,omitempty"`
 			RAC                   *int32            `json:"rac,omitempty"`
 			TAC                   *int32            `json:"tac,omitempty"`
-			CellID                *int64            `json:"cell_id,omitempty"`
+			CellID                *int64            `json:"cellId,omitempty"`
 			ARFCN                 *int32            `json:"arfcn,omitempty"`
-			SignalStrength        *int32            `json:"signal_strength,omitempty"`
-			SignalQuality         *int32            `json:"signal_quality,omitempty"`
-			AdditionalParams      map[string]string `json:"additional_params,omitempty"`
+			SignalStrength        *int32            `json:"signalStrength,omitempty"`
+			SignalQuality         *int32            `json:"signalQuality,omitempty"`
+			AdditionalParams      map[string]string `json:"additionalParams,omitempty"`
 		} `json:"measurements"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
