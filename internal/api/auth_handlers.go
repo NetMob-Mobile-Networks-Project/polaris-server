@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"net/http"
@@ -133,42 +132,5 @@ func (h *Handler) GetUserProfileHandler(w http.ResponseWriter, r *http.Request) 
 		Role:      string(user.Role),
 		CreatedAt: formatTime(user.CreatedAt),
 		UpdatedAt: formatTime(user.UpdatedAt),
-	})
-}
-
-// Middleware to validate JWT token
-func (h *Handler) AuthMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Get token from Authorization header
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			http.Error(w, "Authorization header required", http.StatusUnauthorized)
-			return
-		}
-
-		// Extract token from "Bearer <token>"
-		tokenString := authHeader
-		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
-			tokenString = authHeader[7:]
-		}
-
-		// Parse and validate token
-		claims := &Claims{}
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return []byte(h.jwtSecret), nil
-		})
-
-		if err != nil || !token.Valid {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
-			return
-		}
-
-		// Add user info to context
-		ctx := r.Context()
-		ctx = context.WithValue(ctx, userIDKey, claims.UserID)
-		ctx = context.WithValue(ctx, userRoleKey, claims.Role)
-
-		// Call next handler with updated context
-		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

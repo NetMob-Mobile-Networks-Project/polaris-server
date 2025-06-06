@@ -4,8 +4,6 @@ import (
 	"net/http"
 )
 
-// ========== Dashboard APIs ==========
-
 // GET /api/metrics/map?lat=...&lon=...&radius=...
 // Description: Return signal quality points for heatmap visualization
 // Response: List of geo-tagged signal strengths
