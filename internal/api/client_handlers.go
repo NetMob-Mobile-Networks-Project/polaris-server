@@ -379,7 +379,6 @@ func (h *Handler) UploadHttpTestsHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	processedCount := 0
-	hasErrors := false
 
 	for i, result := range req.Results {
 		// Validate test type
@@ -449,29 +448,16 @@ func (h *Handler) UploadHttpTestsHandler(w http.ResponseWriter, r *http.Request)
 
 		_, err := h.db.CreateHttpTestResult(r.Context(), params)
 		if err != nil {
-			hasErrors = true
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(UploadResponse{
-				Status:           "partial_success",
-				Message:          fmt.Sprintf("Failed to store HTTP test result: %v", err),
-				RecordsProcessed: &processedCount,
-			})
+			writeUploadError(w, http.StatusInternalServerError, "Failed to store HTTP test result "+err.Error(), processedCount)
 			return
 		}
 
 		processedCount++
 	}
 
-	// Determine final status
-	status := "success"
-	if hasErrors {
-		status = "partial_success"
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(UploadResponse{
-		Status:           status,
+		Status:           "success",
 		RecordsProcessed: &processedCount,
 	})
 }
@@ -523,7 +509,6 @@ func (h *Handler) UploadPingTestsHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	processedCount := 0
-	hasErrors := false
 
 	for i, result := range req.Results {
 		// Validate host
@@ -595,29 +580,16 @@ func (h *Handler) UploadPingTestsHandler(w http.ResponseWriter, r *http.Request)
 
 		_, err := h.db.CreatePingTestResult(r.Context(), params)
 		if err != nil {
-			hasErrors = true
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(UploadResponse{
-				Status:           "partial_success",
-				Message:          fmt.Sprintf("Failed to store ping test result: %v", err),
-				RecordsProcessed: &processedCount,
-			})
+			writeUploadError(w, http.StatusInternalServerError, "Failed to store ping test result "+err.Error(), processedCount)
 			return
 		}
 
 		processedCount++
 	}
 
-	// Determine final status
-	status := "success"
-	if hasErrors {
-		status = "partial_success"
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(UploadResponse{
-		Status:           status,
+		Status:           "success",
 		RecordsProcessed: &processedCount,
 	})
 }
@@ -665,7 +637,6 @@ func (h *Handler) UploadDnsTestsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	processedCount := 0
-	hasErrors := false
 
 	for i, result := range req.Results {
 		// Validate hostname
@@ -704,14 +675,7 @@ func (h *Handler) UploadDnsTestsHandler(w http.ResponseWriter, r *http.Request) 
 		if result.ResolvedIPAddresses != nil {
 			resolvedIPsJSON, err := json.Marshal(result.ResolvedIPAddresses)
 			if err != nil {
-				hasErrors = true
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusInternalServerError)
-				json.NewEncoder(w).Encode(UploadResponse{
-					Status:           "partial_success",
-					Message:          fmt.Sprintf("Failed to process resolved IP addresses in result %d", i+1),
-					RecordsProcessed: &processedCount,
-				})
+				writeUploadError(w, http.StatusInternalServerError, "Failed to process resolved IP addresses in result "+err.Error(), processedCount)
 				return
 			}
 			params.ResolvedIpAddresses = resolvedIPsJSON
@@ -719,29 +683,16 @@ func (h *Handler) UploadDnsTestsHandler(w http.ResponseWriter, r *http.Request) 
 
 		_, err := h.db.CreateDnsTestResult(r.Context(), params)
 		if err != nil {
-			hasErrors = true
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(UploadResponse{
-				Status:           "partial_success",
-				Message:          fmt.Sprintf("Failed to store DNS test result: %v", err),
-				RecordsProcessed: &processedCount,
-			})
+			writeUploadError(w, http.StatusInternalServerError, "Failed to store DNS test result "+err.Error(), processedCount)
 			return
 		}
 
 		processedCount++
 	}
 
-	// Determine final status
-	status := "success"
-	if hasErrors {
-		status = "partial_success"
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(UploadResponse{
-		Status:           status,
+		Status:           "success",
 		RecordsProcessed: &processedCount,
 	})
 }
@@ -790,7 +741,6 @@ func (h *Handler) UploadWebTestsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	processedCount := 0
-	hasErrors := false
 
 	for i, result := range req.Results {
 		// Validate URL
@@ -847,29 +797,16 @@ func (h *Handler) UploadWebTestsHandler(w http.ResponseWriter, r *http.Request) 
 
 		_, err := h.db.CreateWebTestResult(r.Context(), params)
 		if err != nil {
-			hasErrors = true
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(UploadResponse{
-				Status:           "partial_success",
-				Message:          fmt.Sprintf("Failed to store web test result: %v", err),
-				RecordsProcessed: &processedCount,
-			})
+			writeUploadError(w, http.StatusInternalServerError, "Failed to store web test result "+err.Error(), processedCount)
 			return
 		}
 
 		processedCount++
 	}
 
-	// Determine final status
-	status := "success"
-	if hasErrors {
-		status = "partial_success"
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(UploadResponse{
-		Status:           status,
+		Status:           "success",
 		RecordsProcessed: &processedCount,
 	})
 }
@@ -918,7 +855,6 @@ func (h *Handler) UploadSmsTestsHandler(w http.ResponseWriter, r *http.Request) 
 	}
 
 	processedCount := 0
-	hasErrors := false
 
 	for i, result := range req.Results {
 		// Validate destination address
@@ -975,29 +911,16 @@ func (h *Handler) UploadSmsTestsHandler(w http.ResponseWriter, r *http.Request) 
 
 		_, err := h.db.CreateSmsTestResult(r.Context(), params)
 		if err != nil {
-			hasErrors = true
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			json.NewEncoder(w).Encode(UploadResponse{
-				Status:           "partial_success",
-				Message:          fmt.Sprintf("Failed to store SMS test result: %v", err),
-				RecordsProcessed: &processedCount,
-			})
+			writeUploadError(w, http.StatusInternalServerError, "Failed to store SMS test result "+err.Error(), processedCount)
 			return
 		}
 
 		processedCount++
 	}
 
-	// Determine final status
-	status := "success"
-	if hasErrors {
-		status = "partial_success"
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(UploadResponse{
-		Status:           status,
+		Status:           "success",
 		RecordsProcessed: &processedCount,
 	})
 }
