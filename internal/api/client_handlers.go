@@ -172,6 +172,8 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 		return
 	}
 
+	log.Printf("Received measurements: %v\n", req)
+
 	if req.DeviceID == "" {
 		writeUploadError(w, http.StatusBadRequest, "Device ID is required", 0)
 		return
@@ -183,7 +185,6 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 	}
 
 	processedCount := 0
-	hasErrors := false
 
 	// Process each measurement
 	for i, m := range req.Measurements {
@@ -296,7 +297,6 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 
 		_, err := h.db.CreateNetworkMeasurement(r.Context(), params)
 		if err != nil {
-			hasErrors = true
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusInternalServerError)
 			json.NewEncoder(w).Encode(UploadResponse{
@@ -310,15 +310,9 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 		processedCount++
 	}
 
-	// Determine final status
-	status := "success"
-	if hasErrors {
-		status = "partial_success"
-	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(UploadResponse{
-		Status:           status,
+		Status:           "success",
 		RecordsProcessed: &processedCount,
 	})
 }
