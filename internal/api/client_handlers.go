@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -992,6 +993,8 @@ func (h *Handler) UploadSmsTestsHandler(w http.ResponseWriter, r *http.Request) 
 
 // Helper to write a JSON error response
 func writeJSONError(w http.ResponseWriter, status int, message string) {
+	log.Printf("Upload error: %s", message)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(Response{
@@ -1002,6 +1005,8 @@ func writeJSONError(w http.ResponseWriter, status int, message string) {
 
 // Helper to write an upload error response
 func writeUploadError(w http.ResponseWriter, status int, message string, processedCount int) {
+	log.Printf("Upload error: %s", message)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(UploadResponse{
