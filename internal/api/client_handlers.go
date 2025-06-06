@@ -278,22 +278,47 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 
 		additionalParamsJSON, _ := json.Marshal(m.AdditionalParams)
 		params := db.CreateNetworkMeasurementParams{
-			DeviceID:              req.DeviceID,
-			Timestamp:             time.Unix(m.Timestamp, 0),
-			Latitude:              sql.NullString{String: strconv.FormatFloat(*m.Latitude, 'f', 8, 64), Valid: m.Latitude != nil},
-			Longitude:             sql.NullString{String: strconv.FormatFloat(*m.Longitude, 'f', 8, 64), Valid: m.Longitude != nil},
-			CellularTechnology:    sql.NullString{String: *m.CellularTechnology, Valid: m.CellularTechnology != nil},
-			NetworkOperatorName:   sql.NullString{String: *m.NetworkOperatorName, Valid: m.NetworkOperatorName != nil},
-			NetworkOperatorMccmnc: sql.NullString{String: *m.NetworkOperatorMCCMNC, Valid: m.NetworkOperatorMCCMNC != nil},
-			Lac:                   sql.NullInt32{Int32: *m.LAC, Valid: m.LAC != nil},
-			Rac:                   sql.NullInt32{Int32: *m.RAC, Valid: m.RAC != nil},
-			Tac:                   sql.NullInt32{Int32: *m.TAC, Valid: m.TAC != nil},
-			CellID:                sql.NullInt64{Int64: *m.CellID, Valid: m.CellID != nil},
-			Arfcn:                 sql.NullInt32{Int32: *m.ARFCN, Valid: m.ARFCN != nil},
-			SignalStrength:        sql.NullInt32{Int32: *m.SignalStrength, Valid: m.SignalStrength != nil},
-			SignalQuality:         sql.NullInt32{Int32: *m.SignalQuality, Valid: m.SignalQuality != nil},
-			AdditionalParams:      additionalParamsJSON,
+			DeviceID:  req.DeviceID,
+			Timestamp: time.Unix(m.Timestamp, 0),
 		}
+
+		if m.Latitude != nil {
+			params.Latitude = sql.NullString{String: strconv.FormatFloat(*m.Latitude, 'f', 8, 64), Valid: true}
+		}
+		if m.Longitude != nil {
+			params.Longitude = sql.NullString{String: strconv.FormatFloat(*m.Longitude, 'f', 8, 64), Valid: true}
+		}
+		if m.CellularTechnology != nil {
+			params.CellularTechnology = sql.NullString{String: *m.CellularTechnology, Valid: true}
+		}
+		if m.NetworkOperatorName != nil {
+			params.NetworkOperatorName = sql.NullString{String: *m.NetworkOperatorName, Valid: true}
+		}
+		if m.NetworkOperatorMCCMNC != nil {
+			params.NetworkOperatorMccmnc = sql.NullString{String: *m.NetworkOperatorMCCMNC, Valid: true}
+		}
+		if m.LAC != nil {
+			params.Lac = sql.NullInt32{Int32: *m.LAC, Valid: true}
+		}
+		if m.RAC != nil {
+			params.Rac = sql.NullInt32{Int32: *m.RAC, Valid: true}
+		}
+		if m.TAC != nil {
+			params.Tac = sql.NullInt32{Int32: *m.TAC, Valid: true}
+		}
+		if m.CellID != nil {
+			params.CellID = sql.NullInt64{Int64: *m.CellID, Valid: true}
+		}
+		if m.ARFCN != nil {
+			params.Arfcn = sql.NullInt32{Int32: *m.ARFCN, Valid: true}
+		}
+		if m.SignalStrength != nil {
+			params.SignalStrength = sql.NullInt32{Int32: *m.SignalStrength, Valid: true}
+		}
+		if m.SignalQuality != nil {
+			params.SignalQuality = sql.NullInt32{Int32: *m.SignalQuality, Valid: true}
+		}
+		params.AdditionalParams = additionalParamsJSON
 
 		_, err := h.db.CreateNetworkMeasurement(r.Context(), params)
 		if err != nil {
