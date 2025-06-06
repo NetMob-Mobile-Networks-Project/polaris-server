@@ -27,6 +27,7 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 
 	// API version 1 routes
 	apiV1 := router.PathPrefix("/api/v1").Subrouter()
+	apiV1.Use(h.RecoverMiddleware)
 
 	// Public routes
 	apiV1.HandleFunc("/auth/login", h.LoginHandler).Methods("POST")
@@ -58,7 +59,6 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 
 	// Admin routes (protected by admin middleware)
 	admin := protected.PathPrefix("/admin").Subrouter()
-	admin.Use(h.AuthMiddleware)
 	admin.Use(h.AdminMiddleware)
 
 	// Admin user management routes
@@ -74,6 +74,22 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 func (h *Handler) healthCheck(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{
 		"status": "ok",
+	})
+}
+
+func (h *Handler) RecoverMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if err := recover(); err != nil {
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusInternalServerError)
+				json.NewEncoder(w).Encode(UploadResponse{
+					Status:  "error",
+					Message: "Internal server error",
+				})
+			}
+		}()
+		next.ServeHTTP(w, r)
 	})
 }
 

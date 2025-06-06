@@ -14,7 +14,6 @@ type Querier interface {
 	CountUsers(ctx context.Context) (int64, error)
 	CreateDnsTestResult(ctx context.Context, arg CreateDnsTestResultParams) (sql.Result, error)
 	CreateHttpTestResult(ctx context.Context, arg CreateHttpTestResultParams) (sql.Result, error)
-	CreateMeasurement(ctx context.Context, arg CreateMeasurementParams) (sql.Result, error)
 	CreateNetworkMeasurement(ctx context.Context, arg CreateNetworkMeasurementParams) (sql.Result, error)
 	CreatePingTestResult(ctx context.Context, arg CreatePingTestResultParams) (sql.Result, error)
 	CreateSmsTestResult(ctx context.Context, arg CreateSmsTestResultParams) (sql.Result, error)
@@ -24,11 +23,10 @@ type Querier interface {
 	// SELECT * FROM users WHERE id = ?;
 	DeleteUser(ctx context.Context, id int32) error
 	GetClientConfig(ctx context.Context) (ClientConfig, error)
-	GetMeasurement(ctx context.Context, id int32) (Measurement, error)
 	GetUser(ctx context.Context, id int32) (User, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int32) (User, error)
-	ListMeasurements(ctx context.Context, arg ListMeasurementsParams) ([]Measurement, error)
+	ListMeasurements(ctx context.Context, arg ListMeasurementsParams) ([]NetworkMeasurement, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]ListUsersRow, error)
 	UpdateClientConfig(ctx context.Context, arg UpdateClientConfigParams) error
 	UpdateUserExec(ctx context.Context, arg UpdateUserExecParams) error

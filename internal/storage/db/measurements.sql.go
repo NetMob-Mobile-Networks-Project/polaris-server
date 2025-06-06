@@ -13,7 +13,7 @@ import (
 )
 
 const countMeasurements = `-- name: CountMeasurements :one
-SELECT COUNT(*) FROM measurements
+SELECT COUNT(*) FROM network_measurements
 WHERE timestamp BETWEEN ? AND ?
 `
 
@@ -104,84 +104,6 @@ func (q *Queries) CreateHttpTestResult(ctx context.Context, arg CreateHttpTestRe
 		arg.BytesTransferred,
 		arg.DurationMillis,
 		arg.ThroughputKbps,
-	)
-}
-
-const createMeasurement = `-- name: CreateMeasurement :execresult
-INSERT INTO measurements (
-    timestamp,
-    latitude,
-    longitude,
-    network_type,
-    plmn_id,
-    lac,
-    tac,
-    cell_id,
-    arfcn,
-    frequency_band,
-    rssi,
-    ec_no,
-    rscp,
-    rsrq,
-    rsrp,
-    download_speed,
-    upload_speed,
-    ping_ms,
-    dns_ms,
-    http_latency_ms,
-    sms_delivery_ms
-) VALUES (
-    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-)
-`
-
-type CreateMeasurementParams struct {
-	Timestamp     time.Time      `json:"timestamp"`
-	Latitude      string         `json:"latitude"`
-	Longitude     string         `json:"longitude"`
-	NetworkType   string         `json:"network_type"`
-	PlmnID        sql.NullString `json:"plmn_id"`
-	Lac           sql.NullString `json:"lac"`
-	Tac           sql.NullString `json:"tac"`
-	CellID        sql.NullString `json:"cell_id"`
-	Arfcn         sql.NullInt32  `json:"arfcn"`
-	FrequencyBand sql.NullString `json:"frequency_band"`
-	Rssi          sql.NullInt32  `json:"rssi"`
-	EcNo          sql.NullString `json:"ec_no"`
-	Rscp          sql.NullInt32  `json:"rscp"`
-	Rsrq          sql.NullString `json:"rsrq"`
-	Rsrp          sql.NullInt32  `json:"rsrp"`
-	DownloadSpeed sql.NullString `json:"download_speed"`
-	UploadSpeed   sql.NullString `json:"upload_speed"`
-	PingMs        sql.NullInt32  `json:"ping_ms"`
-	DnsMs         sql.NullInt32  `json:"dns_ms"`
-	HttpLatencyMs sql.NullInt32  `json:"http_latency_ms"`
-	SmsDeliveryMs sql.NullInt32  `json:"sms_delivery_ms"`
-}
-
-func (q *Queries) CreateMeasurement(ctx context.Context, arg CreateMeasurementParams) (sql.Result, error) {
-	return q.exec(ctx, q.createMeasurementStmt, createMeasurement,
-		arg.Timestamp,
-		arg.Latitude,
-		arg.Longitude,
-		arg.NetworkType,
-		arg.PlmnID,
-		arg.Lac,
-		arg.Tac,
-		arg.CellID,
-		arg.Arfcn,
-		arg.FrequencyBand,
-		arg.Rssi,
-		arg.EcNo,
-		arg.Rscp,
-		arg.Rsrq,
-		arg.Rsrp,
-		arg.DownloadSpeed,
-		arg.UploadSpeed,
-		arg.PingMs,
-		arg.DnsMs,
-		arg.HttpLatencyMs,
-		arg.SmsDeliveryMs,
 	)
 }
 
@@ -390,44 +312,8 @@ func (q *Queries) GetClientConfig(ctx context.Context) (ClientConfig, error) {
 	return i, err
 }
 
-const getMeasurement = `-- name: GetMeasurement :one
-SELECT id, timestamp, latitude, longitude, network_type, plmn_id, lac, tac, cell_id, arfcn, frequency_band, rssi, ec_no, rscp, rsrq, rsrp, download_speed, upload_speed, ping_ms, dns_ms, http_latency_ms, sms_delivery_ms, created_at FROM measurements
-WHERE id = ? LIMIT 1
-`
-
-func (q *Queries) GetMeasurement(ctx context.Context, id int32) (Measurement, error) {
-	row := q.queryRow(ctx, q.getMeasurementStmt, getMeasurement, id)
-	var i Measurement
-	err := row.Scan(
-		&i.ID,
-		&i.Timestamp,
-		&i.Latitude,
-		&i.Longitude,
-		&i.NetworkType,
-		&i.PlmnID,
-		&i.Lac,
-		&i.Tac,
-		&i.CellID,
-		&i.Arfcn,
-		&i.FrequencyBand,
-		&i.Rssi,
-		&i.EcNo,
-		&i.Rscp,
-		&i.Rsrq,
-		&i.Rsrp,
-		&i.DownloadSpeed,
-		&i.UploadSpeed,
-		&i.PingMs,
-		&i.DnsMs,
-		&i.HttpLatencyMs,
-		&i.SmsDeliveryMs,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
 const listMeasurements = `-- name: ListMeasurements :many
-SELECT id, timestamp, latitude, longitude, network_type, plmn_id, lac, tac, cell_id, arfcn, frequency_band, rssi, ec_no, rscp, rsrq, rsrp, download_speed, upload_speed, ping_ms, dns_ms, http_latency_ms, sms_delivery_ms, created_at FROM measurements
+SELECT id, device_id, timestamp, latitude, longitude, cellular_technology, network_operator_name, network_operator_mccmnc, lac, rac, tac, cell_id, arfcn, signal_strength, signal_quality, additional_params, created_at FROM network_measurements
 WHERE timestamp BETWEEN ? AND ?
 ORDER BY timestamp DESC
 LIMIT ? OFFSET ?
@@ -440,7 +326,7 @@ type ListMeasurementsParams struct {
 	Offset        int32     `json:"offset"`
 }
 
-func (q *Queries) ListMeasurements(ctx context.Context, arg ListMeasurementsParams) ([]Measurement, error) {
+func (q *Queries) ListMeasurements(ctx context.Context, arg ListMeasurementsParams) ([]NetworkMeasurement, error) {
 	rows, err := q.query(ctx, q.listMeasurementsStmt, listMeasurements,
 		arg.FromTimestamp,
 		arg.ToTimestamp,
@@ -451,32 +337,26 @@ func (q *Queries) ListMeasurements(ctx context.Context, arg ListMeasurementsPara
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Measurement{}
+	items := []NetworkMeasurement{}
 	for rows.Next() {
-		var i Measurement
+		var i NetworkMeasurement
 		if err := rows.Scan(
 			&i.ID,
+			&i.DeviceID,
 			&i.Timestamp,
 			&i.Latitude,
 			&i.Longitude,
-			&i.NetworkType,
-			&i.PlmnID,
+			&i.CellularTechnology,
+			&i.NetworkOperatorName,
+			&i.NetworkOperatorMccmnc,
 			&i.Lac,
+			&i.Rac,
 			&i.Tac,
 			&i.CellID,
 			&i.Arfcn,
-			&i.FrequencyBand,
-			&i.Rssi,
-			&i.EcNo,
-			&i.Rscp,
-			&i.Rsrq,
-			&i.Rsrp,
-			&i.DownloadSpeed,
-			&i.UploadSpeed,
-			&i.PingMs,
-			&i.DnsMs,
-			&i.HttpLatencyMs,
-			&i.SmsDeliveryMs,
+			&i.SignalStrength,
+			&i.SignalQuality,
+			&i.AdditionalParams,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err

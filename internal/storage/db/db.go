@@ -36,9 +36,6 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.createHttpTestResultStmt, err = db.PrepareContext(ctx, createHttpTestResult); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateHttpTestResult: %w", err)
 	}
-	if q.createMeasurementStmt, err = db.PrepareContext(ctx, createMeasurement); err != nil {
-		return nil, fmt.Errorf("error preparing query CreateMeasurement: %w", err)
-	}
 	if q.createNetworkMeasurementStmt, err = db.PrepareContext(ctx, createNetworkMeasurement); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateNetworkMeasurement: %w", err)
 	}
@@ -59,9 +56,6 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.getClientConfigStmt, err = db.PrepareContext(ctx, getClientConfig); err != nil {
 		return nil, fmt.Errorf("error preparing query GetClientConfig: %w", err)
-	}
-	if q.getMeasurementStmt, err = db.PrepareContext(ctx, getMeasurement); err != nil {
-		return nil, fmt.Errorf("error preparing query GetMeasurement: %w", err)
 	}
 	if q.getUserStmt, err = db.PrepareContext(ctx, getUser); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUser: %w", err)
@@ -109,11 +103,6 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing createHttpTestResultStmt: %w", cerr)
 		}
 	}
-	if q.createMeasurementStmt != nil {
-		if cerr := q.createMeasurementStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing createMeasurementStmt: %w", cerr)
-		}
-	}
 	if q.createNetworkMeasurementStmt != nil {
 		if cerr := q.createNetworkMeasurementStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing createNetworkMeasurementStmt: %w", cerr)
@@ -147,11 +136,6 @@ func (q *Queries) Close() error {
 	if q.getClientConfigStmt != nil {
 		if cerr := q.getClientConfigStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getClientConfigStmt: %w", cerr)
-		}
-	}
-	if q.getMeasurementStmt != nil {
-		if cerr := q.getMeasurementStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getMeasurementStmt: %w", cerr)
 		}
 	}
 	if q.getUserStmt != nil {
@@ -232,7 +216,6 @@ type Queries struct {
 	countUsersStmt               *sql.Stmt
 	createDnsTestResultStmt      *sql.Stmt
 	createHttpTestResultStmt     *sql.Stmt
-	createMeasurementStmt        *sql.Stmt
 	createNetworkMeasurementStmt *sql.Stmt
 	createPingTestResultStmt     *sql.Stmt
 	createSmsTestResultStmt      *sql.Stmt
@@ -240,7 +223,6 @@ type Queries struct {
 	createWebTestResultStmt      *sql.Stmt
 	deleteUserStmt               *sql.Stmt
 	getClientConfigStmt          *sql.Stmt
-	getMeasurementStmt           *sql.Stmt
 	getUserStmt                  *sql.Stmt
 	getUserByEmailStmt           *sql.Stmt
 	getUserByIDStmt              *sql.Stmt
@@ -258,7 +240,6 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		countUsersStmt:               q.countUsersStmt,
 		createDnsTestResultStmt:      q.createDnsTestResultStmt,
 		createHttpTestResultStmt:     q.createHttpTestResultStmt,
-		createMeasurementStmt:        q.createMeasurementStmt,
 		createNetworkMeasurementStmt: q.createNetworkMeasurementStmt,
 		createPingTestResultStmt:     q.createPingTestResultStmt,
 		createSmsTestResultStmt:      q.createSmsTestResultStmt,
@@ -266,7 +247,6 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		createWebTestResultStmt:      q.createWebTestResultStmt,
 		deleteUserStmt:               q.deleteUserStmt,
 		getClientConfigStmt:          q.getClientConfigStmt,
-		getMeasurementStmt:           q.getMeasurementStmt,
 		getUserStmt:                  q.getUserStmt,
 		getUserByEmailStmt:           q.getUserByEmailStmt,
 		getUserByIDStmt:              q.getUserByIDStmt,
