@@ -669,9 +669,99 @@ func (q *Queries) GetNetworkTechnologyDistribution(ctx context.Context, arg GetN
 	return items, nil
 }
 
+const listDnsMeasurements = `-- name: ListDnsMeasurements :many
+SELECT id, device_id, timestamp, success, error_message, hostname, resolution_time_millis, resolved_ip_addresses, created_at FROM dns_test_results
+ORDER BY id DESC
+LIMIT ? OFFSET ?
+`
+
+type ListDnsMeasurementsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListDnsMeasurements(ctx context.Context, arg ListDnsMeasurementsParams) ([]DnsTestResult, error) {
+	rows, err := q.query(ctx, q.listDnsMeasurementsStmt, listDnsMeasurements, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []DnsTestResult{}
+	for rows.Next() {
+		var i DnsTestResult
+		if err := rows.Scan(
+			&i.ID,
+			&i.DeviceID,
+			&i.Timestamp,
+			&i.Success,
+			&i.ErrorMessage,
+			&i.Hostname,
+			&i.ResolutionTimeMillis,
+			&i.ResolvedIpAddresses,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listHttpMeasurements = `-- name: ListHttpMeasurements :many
+SELECT id, device_id, timestamp, success, error_message, test_type, url, bytes_transferred, duration_millis, throughput_kbps, created_at FROM http_test_results
+ORDER BY id DESC
+LIMIT ? OFFSET ?
+`
+
+type ListHttpMeasurementsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListHttpMeasurements(ctx context.Context, arg ListHttpMeasurementsParams) ([]HttpTestResult, error) {
+	rows, err := q.query(ctx, q.listHttpMeasurementsStmt, listHttpMeasurements, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []HttpTestResult{}
+	for rows.Next() {
+		var i HttpTestResult
+		if err := rows.Scan(
+			&i.ID,
+			&i.DeviceID,
+			&i.Timestamp,
+			&i.Success,
+			&i.ErrorMessage,
+			&i.TestType,
+			&i.Url,
+			&i.BytesTransferred,
+			&i.DurationMillis,
+			&i.ThroughputKbps,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listMeasurements = `-- name: ListMeasurements :many
 SELECT id, device_id, timestamp, latitude, longitude, cellular_technology, network_operator_name, network_operator_mccmnc, lac, rac, tac, cell_id, arfcn, signal_strength, signal_quality, additional_params, created_at FROM network_measurements
-ORDER BY timestamp DESC
+ORDER BY id DESC
 LIMIT ? OFFSET ?
 `
 
@@ -706,6 +796,144 @@ func (q *Queries) ListMeasurements(ctx context.Context, arg ListMeasurementsPara
 			&i.SignalStrength,
 			&i.SignalQuality,
 			&i.AdditionalParams,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPingMeasurements = `-- name: ListPingMeasurements :many
+SELECT id, device_id, timestamp, success, error_message, host, packets_transmitted, packets_received, min_rtt_millis, avg_rtt_millis, max_rtt_millis, ip_address, created_at FROM ping_test_results
+ORDER BY id DESC
+LIMIT ? OFFSET ?
+`
+
+type ListPingMeasurementsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListPingMeasurements(ctx context.Context, arg ListPingMeasurementsParams) ([]PingTestResult, error) {
+	rows, err := q.query(ctx, q.listPingMeasurementsStmt, listPingMeasurements, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PingTestResult{}
+	for rows.Next() {
+		var i PingTestResult
+		if err := rows.Scan(
+			&i.ID,
+			&i.DeviceID,
+			&i.Timestamp,
+			&i.Success,
+			&i.ErrorMessage,
+			&i.Host,
+			&i.PacketsTransmitted,
+			&i.PacketsReceived,
+			&i.MinRttMillis,
+			&i.AvgRttMillis,
+			&i.MaxRttMillis,
+			&i.IpAddress,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSmsMeasurements = `-- name: ListSmsMeasurements :many
+SELECT id, device_id, timestamp, success, error_message, destination_address, submission_time_millis, delivery_time_millis, duration_millis, created_at FROM sms_test_results
+ORDER BY id DESC
+LIMIT ? OFFSET ?
+`
+
+type ListSmsMeasurementsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListSmsMeasurements(ctx context.Context, arg ListSmsMeasurementsParams) ([]SmsTestResult, error) {
+	rows, err := q.query(ctx, q.listSmsMeasurementsStmt, listSmsMeasurements, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SmsTestResult{}
+	for rows.Next() {
+		var i SmsTestResult
+		if err := rows.Scan(
+			&i.ID,
+			&i.DeviceID,
+			&i.Timestamp,
+			&i.Success,
+			&i.ErrorMessage,
+			&i.DestinationAddress,
+			&i.SubmissionTimeMillis,
+			&i.DeliveryTimeMillis,
+			&i.DurationMillis,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listWebMeasurements = `-- name: ListWebMeasurements :many
+SELECT id, device_id, timestamp, success, error_message, url, loading_time_millis, response_code, page_size_bytes, created_at FROM web_test_results
+ORDER BY id DESC
+LIMIT ? OFFSET ?
+`
+
+type ListWebMeasurementsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListWebMeasurements(ctx context.Context, arg ListWebMeasurementsParams) ([]WebTestResult, error) {
+	rows, err := q.query(ctx, q.listWebMeasurementsStmt, listWebMeasurements, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []WebTestResult{}
+	for rows.Next() {
+		var i WebTestResult
+		if err := rows.Scan(
+			&i.ID,
+			&i.DeviceID,
+			&i.Timestamp,
+			&i.Success,
+			&i.ErrorMessage,
+			&i.Url,
+			&i.LoadingTimeMillis,
+			&i.ResponseCode,
+			&i.PageSizeBytes,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err

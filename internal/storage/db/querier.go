@@ -33,8 +33,13 @@ type Querier interface {
 	GetUser(ctx context.Context, id int32) (User, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int32) (User, error)
+	ListDnsMeasurements(ctx context.Context, arg ListDnsMeasurementsParams) ([]DnsTestResult, error)
+	ListHttpMeasurements(ctx context.Context, arg ListHttpMeasurementsParams) ([]HttpTestResult, error)
 	ListMeasurements(ctx context.Context, arg ListMeasurementsParams) ([]NetworkMeasurement, error)
+	ListPingMeasurements(ctx context.Context, arg ListPingMeasurementsParams) ([]PingTestResult, error)
+	ListSmsMeasurements(ctx context.Context, arg ListSmsMeasurementsParams) ([]SmsTestResult, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]ListUsersRow, error)
+	ListWebMeasurements(ctx context.Context, arg ListWebMeasurementsParams) ([]WebTestResult, error)
 	UpdateClientConfig(ctx context.Context, arg UpdateClientConfigParams) error
 	UpdateUserExec(ctx context.Context, arg UpdateUserExecParams) error
 }

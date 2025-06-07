@@ -414,11 +414,11 @@ func (h *Handler) GetMapDataHandler(w http.ResponseWriter, r *http.Request) {
 // Description: Get detailed list of network measurements
 func (h *Handler) GetDetailedListMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	page := r.URL.Query().Get("page")
-	limit := 30
+	limit := int32(30)
 
 	metric := r.URL.Query().Get("metric")
 
-	pageNum := 1
+	pageNum := int32(1)
 	if page != "" {
 		if _, err := fmt.Sscanf(page, "%d", &pageNum); err != nil {
 			writeJSONError(w, http.StatusBadRequest, "Invalid page number")
@@ -441,38 +441,228 @@ func (h *Handler) GetDetailedListMetricsHandler(w http.ResponseWriter, r *http.R
 	}
 
 	var labels []string
-	var values []interface{}
-	var error error
+	var values []map[string]interface{}
 
 	if metric == "network" {
 		list, err := h.db.ListMeasurements(r.Context(), db.ListMeasurementsParams{
-			Page: pageNum,
+			Limit:  limit,
+			Offset: (pageNum - 1) * limit,
 		})
+		if err != nil {
+			writeJSONError(w, http.StatusInternalServerError, "Failed to get detailed list of network measurements")
+			return
+		}
+
+		for _, m := range list {
+			labels = []string{
+				"timestamp",
+				"device_id",
+				"cellular_technology",
+				"network_operator_name",
+				"network_operator_mccmnc",
+				"lac",
+				"rac",
+				"tac",
+				"cell_id",
+				"arfcn",
+				"signal_strength",
+				"signal_quality",
+				"latitude",
+				"longitude",
+				"additional_params",
+			}
+
+			values = append(values, map[string]interface{}{
+				"timestamp":               m.Timestamp,
+				"device_id":               m.DeviceID,
+				"cellular_technology":     m.CellularTechnology,
+				"network_operator_name":   m.NetworkOperatorName,
+				"network_operator_mccmnc": m.NetworkOperatorMccmnc,
+				"lac":                     m.Lac,
+				"rac":                     m.Rac,
+				"tac":                     m.Tac,
+				"cell_id":                 m.CellID,
+				"arfcn":                   m.Arfcn,
+				"signal_strength":         m.SignalStrength,
+				"signal_quality":          m.SignalQuality,
+				"latitude":                m.Latitude,
+				"longitude":               m.Longitude,
+				"additional_params":       m.AdditionalParams,
+			})
+		}
 	} else if metric == "ping" {
 		list, err := h.db.ListPingMeasurements(r.Context(), db.ListPingMeasurementsParams{
-			Page: pageNum,
+			Limit:  limit,
+			Offset: (pageNum - 1) * limit,
 		})
+		if err != nil {
+			writeJSONError(w, http.StatusInternalServerError, "Failed to get detailed list of network measurements")
+			return
+		}
+
+		labels = []string{
+			"timestamp",
+			"device_id",
+			"success",
+			"error_message",
+			"host",
+			"packets_transmitted",
+			"packets_received",
+			"min_rtt_millis",
+			"avg_rtt_millis",
+			"max_rtt_millis",
+			"ip_address",
+		}
+
+		for _, m := range list {
+			values = append(values, map[string]interface{}{
+				"timestamp":           m.Timestamp,
+				"device_id":           m.DeviceID,
+				"success":             m.Success,
+				"error_message":       m.ErrorMessage,
+				"host":                m.Host,
+				"packets_transmitted": m.PacketsTransmitted,
+				"packets_received":    m.PacketsReceived,
+				"min_rtt_millis":      m.MinRttMillis,
+				"avg_rtt_millis":      m.AvgRttMillis,
+				"max_rtt_millis":      m.MaxRttMillis,
+				"ip_address":          m.IpAddress,
+			})
+		}
 	} else if metric == "http" {
 		list, err := h.db.ListHttpMeasurements(r.Context(), db.ListHttpMeasurementsParams{
-			Page: pageNum,
+			Limit:  limit,
+			Offset: (pageNum - 1) * limit,
 		})
+		if err != nil {
+			writeJSONError(w, http.StatusInternalServerError, "Failed to get detailed list of network measurements")
+			return
+		}
+
+		labels = []string{
+			"timestamp",
+			"device_id",
+			"success",
+			"error_message",
+			"test_type",
+			"url",
+			"bytes_transferred",
+			"duration_millis",
+			"throughput_kbps",
+		}
+
+		for _, m := range list {
+			values = append(values, map[string]interface{}{
+				"timestamp":         m.Timestamp,
+				"device_id":         m.DeviceID,
+				"success":           m.Success,
+				"error_message":     m.ErrorMessage,
+				"test_type":         m.TestType,
+				"url":               m.Url,
+				"bytes_transferred": m.BytesTransferred,
+				"duration_millis":   m.DurationMillis,
+				"throughput_kbps":   m.ThroughputKbps,
+			})
+		}
 	} else if metric == "dns" {
 		list, err := h.db.ListDnsMeasurements(r.Context(), db.ListDnsMeasurementsParams{
-			Page: pageNum,
+			Limit:  limit,
+			Offset: (pageNum - 1) * limit,
 		})
+		if err != nil {
+			writeJSONError(w, http.StatusInternalServerError, "Failed to get detailed list of network measurements")
+			return
+		}
+
+		labels = []string{
+			"timestamp",
+			"device_id",
+			"success",
+			"error_message",
+			"hostname",
+			"resolution_time_millis",
+			"resolved_ip_addresses",
+		}
+
+		for _, m := range list {
+			values = append(values, map[string]interface{}{
+				"timestamp":              m.Timestamp,
+				"device_id":              m.DeviceID,
+				"success":                m.Success,
+				"error_message":          m.ErrorMessage,
+				"hostname":               m.Hostname,
+				"resolution_time_millis": m.ResolutionTimeMillis,
+				"resolved_ip_addresses":  m.ResolvedIpAddresses,
+			})
+		}
 	} else if metric == "web" {
 		list, err := h.db.ListWebMeasurements(r.Context(), db.ListWebMeasurementsParams{
-			Page: pageNum,
+			Limit:  limit,
+			Offset: (pageNum - 1) * limit,
 		})
+		if err != nil {
+			writeJSONError(w, http.StatusInternalServerError, "Failed to get detailed list of network measurements")
+			return
+		}
+
+		labels = []string{
+			"timestamp",
+			"device_id",
+			"success",
+			"error_message",
+			"url",
+			"loading_time_millis",
+			"response_code",
+			"page_size_bytes",
+		}
+
+		for _, m := range list {
+			values = append(values, map[string]interface{}{
+				"timestamp":           m.Timestamp,
+				"device_id":           m.DeviceID,
+				"success":             m.Success,
+				"error_message":       m.ErrorMessage,
+				"url":                 m.Url,
+				"loading_time_millis": m.LoadingTimeMillis,
+				"response_code":       m.ResponseCode,
+				"page_size_bytes":     m.PageSizeBytes,
+			})
+		}
 	} else if metric == "sms" {
 		list, err := h.db.ListSmsMeasurements(r.Context(), db.ListSmsMeasurementsParams{
-			Page: pageNum,
+			Limit:  limit,
+			Offset: (pageNum - 1) * limit,
 		})
-	}
+		if err != nil {
+			writeJSONError(w, http.StatusInternalServerError, "Failed to get detailed list of network measurements")
+			return
+		}
 
-	if error != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Failed to get detailed list of network measurements")
-		return
+		labels = []string{
+			"timestamp",
+			"device_id",
+			"success",
+			"error_message",
+			"destination_address",
+			"submission_time_millis",
+			"delivery_time_millis",
+			"duration_millis",
+			"created_at",
+		}
+
+		for _, m := range list {
+			values = append(values, map[string]interface{}{
+				"timestamp":              m.Timestamp,
+				"device_id":              m.DeviceID,
+				"success":                m.Success,
+				"error_message":          m.ErrorMessage,
+				"destination_address":    m.DestinationAddress,
+				"submission_time_millis": m.SubmissionTimeMillis,
+				"delivery_time_millis":   m.DeliveryTimeMillis,
+				"duration_millis":        m.DurationMillis,
+				"created_at":             m.CreatedAt,
+			})
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")

@@ -87,11 +87,26 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getUserByIDStmt, err = db.PrepareContext(ctx, getUserByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUserByID: %w", err)
 	}
+	if q.listDnsMeasurementsStmt, err = db.PrepareContext(ctx, listDnsMeasurements); err != nil {
+		return nil, fmt.Errorf("error preparing query ListDnsMeasurements: %w", err)
+	}
+	if q.listHttpMeasurementsStmt, err = db.PrepareContext(ctx, listHttpMeasurements); err != nil {
+		return nil, fmt.Errorf("error preparing query ListHttpMeasurements: %w", err)
+	}
 	if q.listMeasurementsStmt, err = db.PrepareContext(ctx, listMeasurements); err != nil {
 		return nil, fmt.Errorf("error preparing query ListMeasurements: %w", err)
 	}
+	if q.listPingMeasurementsStmt, err = db.PrepareContext(ctx, listPingMeasurements); err != nil {
+		return nil, fmt.Errorf("error preparing query ListPingMeasurements: %w", err)
+	}
+	if q.listSmsMeasurementsStmt, err = db.PrepareContext(ctx, listSmsMeasurements); err != nil {
+		return nil, fmt.Errorf("error preparing query ListSmsMeasurements: %w", err)
+	}
 	if q.listUsersStmt, err = db.PrepareContext(ctx, listUsers); err != nil {
 		return nil, fmt.Errorf("error preparing query ListUsers: %w", err)
+	}
+	if q.listWebMeasurementsStmt, err = db.PrepareContext(ctx, listWebMeasurements); err != nil {
+		return nil, fmt.Errorf("error preparing query ListWebMeasurements: %w", err)
 	}
 	if q.updateClientConfigStmt, err = db.PrepareContext(ctx, updateClientConfig); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateClientConfig: %w", err)
@@ -209,14 +224,39 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getUserByIDStmt: %w", cerr)
 		}
 	}
+	if q.listDnsMeasurementsStmt != nil {
+		if cerr := q.listDnsMeasurementsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listDnsMeasurementsStmt: %w", cerr)
+		}
+	}
+	if q.listHttpMeasurementsStmt != nil {
+		if cerr := q.listHttpMeasurementsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listHttpMeasurementsStmt: %w", cerr)
+		}
+	}
 	if q.listMeasurementsStmt != nil {
 		if cerr := q.listMeasurementsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing listMeasurementsStmt: %w", cerr)
 		}
 	}
+	if q.listPingMeasurementsStmt != nil {
+		if cerr := q.listPingMeasurementsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listPingMeasurementsStmt: %w", cerr)
+		}
+	}
+	if q.listSmsMeasurementsStmt != nil {
+		if cerr := q.listSmsMeasurementsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listSmsMeasurementsStmt: %w", cerr)
+		}
+	}
 	if q.listUsersStmt != nil {
 		if cerr := q.listUsersStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing listUsersStmt: %w", cerr)
+		}
+	}
+	if q.listWebMeasurementsStmt != nil {
+		if cerr := q.listWebMeasurementsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listWebMeasurementsStmt: %w", cerr)
 		}
 	}
 	if q.updateClientConfigStmt != nil {
@@ -289,8 +329,13 @@ type Queries struct {
 	getUserStmt                          *sql.Stmt
 	getUserByEmailStmt                   *sql.Stmt
 	getUserByIDStmt                      *sql.Stmt
+	listDnsMeasurementsStmt              *sql.Stmt
+	listHttpMeasurementsStmt             *sql.Stmt
 	listMeasurementsStmt                 *sql.Stmt
+	listPingMeasurementsStmt             *sql.Stmt
+	listSmsMeasurementsStmt              *sql.Stmt
 	listUsersStmt                        *sql.Stmt
+	listWebMeasurementsStmt              *sql.Stmt
 	updateClientConfigStmt               *sql.Stmt
 	updateUserExecStmt                   *sql.Stmt
 }
@@ -320,8 +365,13 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getUserStmt:                          q.getUserStmt,
 		getUserByEmailStmt:                   q.getUserByEmailStmt,
 		getUserByIDStmt:                      q.getUserByIDStmt,
+		listDnsMeasurementsStmt:              q.listDnsMeasurementsStmt,
+		listHttpMeasurementsStmt:             q.listHttpMeasurementsStmt,
 		listMeasurementsStmt:                 q.listMeasurementsStmt,
+		listPingMeasurementsStmt:             q.listPingMeasurementsStmt,
+		listSmsMeasurementsStmt:              q.listSmsMeasurementsStmt,
 		listUsersStmt:                        q.listUsersStmt,
+		listWebMeasurementsStmt:              q.listWebMeasurementsStmt,
 		updateClientConfigStmt:               q.updateClientConfigStmt,
 		updateUserExecStmt:                   q.updateUserExecStmt,
 	}
