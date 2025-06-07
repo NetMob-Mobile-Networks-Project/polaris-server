@@ -22,7 +22,14 @@ type Querier interface {
 	// -- name: GetUserByID :one
 	// SELECT * FROM users WHERE id = ?;
 	DeleteUser(ctx context.Context, id int32) error
+	GetAverageDownloadSpeed(ctx context.Context, arg GetAverageDownloadSpeedParams) (interface{}, error)
+	GetAverageLatency(ctx context.Context, arg GetAverageLatencyParams) (interface{}, error)
+	GetAverageUploadSpeed(ctx context.Context, arg GetAverageUploadSpeedParams) (interface{}, error)
 	GetClientConfig(ctx context.Context) (ClientConfig, error)
+	GetGeoBounds(ctx context.Context, arg GetGeoBoundsParams) (GetGeoBoundsRow, error)
+	GetMapData(ctx context.Context, arg GetMapDataParams) ([]GetMapDataRow, error)
+	GetNetworkAvailability(ctx context.Context, arg GetNetworkAvailabilityParams) (interface{}, error)
+	GetNetworkTechnologyDistribution(ctx context.Context, arg GetNetworkTechnologyDistributionParams) ([]GetNetworkTechnologyDistributionRow, error)
 	GetUser(ctx context.Context, id int32) (User, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int32) (User, error)

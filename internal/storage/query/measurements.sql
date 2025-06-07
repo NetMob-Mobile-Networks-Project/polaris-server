@@ -113,3 +113,80 @@ INSERT INTO sms_test_results (
 ) VALUES (
     ?, ?, ?, ?, ?, ?, ?, ?
 );
+
+-- name: GetAverageDownloadSpeed :one
+SELECT AVG(CAST(throughput_kbps AS FLOAT)) as average_speed
+FROM http_test_results
+WHERE timestamp BETWEEN ? AND ?
+AND test_type = 'DOWNLOAD'
+AND success = true;
+
+-- name: GetAverageUploadSpeed :one
+SELECT AVG(CAST(throughput_kbps AS FLOAT)) as average_speed
+FROM http_test_results
+WHERE timestamp BETWEEN ? AND ?
+AND test_type = 'UPLOAD'
+AND success = true;
+
+-- name: GetAverageLatency :one
+SELECT AVG(avg_rtt_millis) as average_latency
+FROM ping_test_results
+WHERE timestamp BETWEEN ? AND ?
+AND success = true;
+
+-- name: GetNetworkAvailability :one
+WITH test_results AS (
+    SELECT success FROM http_test_results WHERE timestamp BETWEEN ? AND ?
+    UNION ALL
+    SELECT success FROM ping_test_results WHERE timestamp BETWEEN ? AND ?
+    UNION ALL
+    SELECT success FROM dns_test_results WHERE timestamp BETWEEN ? AND ?
+    UNION ALL
+    SELECT success FROM web_test_results WHERE timestamp BETWEEN ? AND ?
+    UNION ALL
+    SELECT success FROM sms_test_results WHERE timestamp BETWEEN ? AND ?
+)
+SELECT 
+    (COUNT(CASE WHEN success = true THEN 1 END) * 100.0 / COUNT(*)) as availability_percentage
+FROM test_results;
+
+
+-- name: GetNetworkTechnologyDistribution :many
+WITH total_measurements AS (
+    SELECT COUNT(*) as total
+    FROM network_measurements 
+    WHERE timestamp BETWEEN ? AND ?
+)
+SELECT 
+    cellular_technology,
+    (COUNT(*) * 100.0 / (SELECT total FROM total_measurements)) as percentage
+FROM network_measurements
+WHERE timestamp BETWEEN ? AND ?
+GROUP BY cellular_technology;
+
+-- name: GetGeoBounds :one
+SELECT 
+    MIN(CAST(latitude AS FLOAT)) as min_latitude,
+    MAX(CAST(latitude AS FLOAT)) as max_latitude,
+    MIN(CAST(longitude AS FLOAT)) as min_longitude,
+    MAX(CAST(longitude AS FLOAT)) as max_longitude
+FROM network_measurements
+WHERE timestamp BETWEEN ? AND ?
+AND latitude IS NOT NULL 
+AND longitude IS NOT NULL;
+
+-- name: GetMapData :many
+SELECT 
+    latitude,
+    longitude,
+    timestamp,
+    cellular_technology,
+    network_operator_name,
+    signal_strength,
+    signal_quality,
+    additional_params
+FROM network_measurements
+WHERE 
+    latitude BETWEEN ? AND ?
+    AND longitude BETWEEN ? AND ?
+ORDER BY timestamp DESC;

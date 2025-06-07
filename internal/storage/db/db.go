@@ -54,8 +54,29 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.deleteUserStmt, err = db.PrepareContext(ctx, deleteUser); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteUser: %w", err)
 	}
+	if q.getAverageDownloadSpeedStmt, err = db.PrepareContext(ctx, getAverageDownloadSpeed); err != nil {
+		return nil, fmt.Errorf("error preparing query GetAverageDownloadSpeed: %w", err)
+	}
+	if q.getAverageLatencyStmt, err = db.PrepareContext(ctx, getAverageLatency); err != nil {
+		return nil, fmt.Errorf("error preparing query GetAverageLatency: %w", err)
+	}
+	if q.getAverageUploadSpeedStmt, err = db.PrepareContext(ctx, getAverageUploadSpeed); err != nil {
+		return nil, fmt.Errorf("error preparing query GetAverageUploadSpeed: %w", err)
+	}
 	if q.getClientConfigStmt, err = db.PrepareContext(ctx, getClientConfig); err != nil {
 		return nil, fmt.Errorf("error preparing query GetClientConfig: %w", err)
+	}
+	if q.getGeoBoundsStmt, err = db.PrepareContext(ctx, getGeoBounds); err != nil {
+		return nil, fmt.Errorf("error preparing query GetGeoBounds: %w", err)
+	}
+	if q.getMapDataStmt, err = db.PrepareContext(ctx, getMapData); err != nil {
+		return nil, fmt.Errorf("error preparing query GetMapData: %w", err)
+	}
+	if q.getNetworkAvailabilityStmt, err = db.PrepareContext(ctx, getNetworkAvailability); err != nil {
+		return nil, fmt.Errorf("error preparing query GetNetworkAvailability: %w", err)
+	}
+	if q.getNetworkTechnologyDistributionStmt, err = db.PrepareContext(ctx, getNetworkTechnologyDistribution); err != nil {
+		return nil, fmt.Errorf("error preparing query GetNetworkTechnologyDistribution: %w", err)
 	}
 	if q.getUserStmt, err = db.PrepareContext(ctx, getUser); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUser: %w", err)
@@ -133,9 +154,44 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing deleteUserStmt: %w", cerr)
 		}
 	}
+	if q.getAverageDownloadSpeedStmt != nil {
+		if cerr := q.getAverageDownloadSpeedStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getAverageDownloadSpeedStmt: %w", cerr)
+		}
+	}
+	if q.getAverageLatencyStmt != nil {
+		if cerr := q.getAverageLatencyStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getAverageLatencyStmt: %w", cerr)
+		}
+	}
+	if q.getAverageUploadSpeedStmt != nil {
+		if cerr := q.getAverageUploadSpeedStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getAverageUploadSpeedStmt: %w", cerr)
+		}
+	}
 	if q.getClientConfigStmt != nil {
 		if cerr := q.getClientConfigStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getClientConfigStmt: %w", cerr)
+		}
+	}
+	if q.getGeoBoundsStmt != nil {
+		if cerr := q.getGeoBoundsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getGeoBoundsStmt: %w", cerr)
+		}
+	}
+	if q.getMapDataStmt != nil {
+		if cerr := q.getMapDataStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getMapDataStmt: %w", cerr)
+		}
+	}
+	if q.getNetworkAvailabilityStmt != nil {
+		if cerr := q.getNetworkAvailabilityStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getNetworkAvailabilityStmt: %w", cerr)
+		}
+	}
+	if q.getNetworkTechnologyDistributionStmt != nil {
+		if cerr := q.getNetworkTechnologyDistributionStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getNetworkTechnologyDistributionStmt: %w", cerr)
 		}
 	}
 	if q.getUserStmt != nil {
@@ -210,49 +266,63 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                           DBTX
-	tx                           *sql.Tx
-	countMeasurementsStmt        *sql.Stmt
-	countUsersStmt               *sql.Stmt
-	createDnsTestResultStmt      *sql.Stmt
-	createHttpTestResultStmt     *sql.Stmt
-	createNetworkMeasurementStmt *sql.Stmt
-	createPingTestResultStmt     *sql.Stmt
-	createSmsTestResultStmt      *sql.Stmt
-	createUserStmt               *sql.Stmt
-	createWebTestResultStmt      *sql.Stmt
-	deleteUserStmt               *sql.Stmt
-	getClientConfigStmt          *sql.Stmt
-	getUserStmt                  *sql.Stmt
-	getUserByEmailStmt           *sql.Stmt
-	getUserByIDStmt              *sql.Stmt
-	listMeasurementsStmt         *sql.Stmt
-	listUsersStmt                *sql.Stmt
-	updateClientConfigStmt       *sql.Stmt
-	updateUserExecStmt           *sql.Stmt
+	db                                   DBTX
+	tx                                   *sql.Tx
+	countMeasurementsStmt                *sql.Stmt
+	countUsersStmt                       *sql.Stmt
+	createDnsTestResultStmt              *sql.Stmt
+	createHttpTestResultStmt             *sql.Stmt
+	createNetworkMeasurementStmt         *sql.Stmt
+	createPingTestResultStmt             *sql.Stmt
+	createSmsTestResultStmt              *sql.Stmt
+	createUserStmt                       *sql.Stmt
+	createWebTestResultStmt              *sql.Stmt
+	deleteUserStmt                       *sql.Stmt
+	getAverageDownloadSpeedStmt          *sql.Stmt
+	getAverageLatencyStmt                *sql.Stmt
+	getAverageUploadSpeedStmt            *sql.Stmt
+	getClientConfigStmt                  *sql.Stmt
+	getGeoBoundsStmt                     *sql.Stmt
+	getMapDataStmt                       *sql.Stmt
+	getNetworkAvailabilityStmt           *sql.Stmt
+	getNetworkTechnologyDistributionStmt *sql.Stmt
+	getUserStmt                          *sql.Stmt
+	getUserByEmailStmt                   *sql.Stmt
+	getUserByIDStmt                      *sql.Stmt
+	listMeasurementsStmt                 *sql.Stmt
+	listUsersStmt                        *sql.Stmt
+	updateClientConfigStmt               *sql.Stmt
+	updateUserExecStmt                   *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                           tx,
-		tx:                           tx,
-		countMeasurementsStmt:        q.countMeasurementsStmt,
-		countUsersStmt:               q.countUsersStmt,
-		createDnsTestResultStmt:      q.createDnsTestResultStmt,
-		createHttpTestResultStmt:     q.createHttpTestResultStmt,
-		createNetworkMeasurementStmt: q.createNetworkMeasurementStmt,
-		createPingTestResultStmt:     q.createPingTestResultStmt,
-		createSmsTestResultStmt:      q.createSmsTestResultStmt,
-		createUserStmt:               q.createUserStmt,
-		createWebTestResultStmt:      q.createWebTestResultStmt,
-		deleteUserStmt:               q.deleteUserStmt,
-		getClientConfigStmt:          q.getClientConfigStmt,
-		getUserStmt:                  q.getUserStmt,
-		getUserByEmailStmt:           q.getUserByEmailStmt,
-		getUserByIDStmt:              q.getUserByIDStmt,
-		listMeasurementsStmt:         q.listMeasurementsStmt,
-		listUsersStmt:                q.listUsersStmt,
-		updateClientConfigStmt:       q.updateClientConfigStmt,
-		updateUserExecStmt:           q.updateUserExecStmt,
+		db:                                   tx,
+		tx:                                   tx,
+		countMeasurementsStmt:                q.countMeasurementsStmt,
+		countUsersStmt:                       q.countUsersStmt,
+		createDnsTestResultStmt:              q.createDnsTestResultStmt,
+		createHttpTestResultStmt:             q.createHttpTestResultStmt,
+		createNetworkMeasurementStmt:         q.createNetworkMeasurementStmt,
+		createPingTestResultStmt:             q.createPingTestResultStmt,
+		createSmsTestResultStmt:              q.createSmsTestResultStmt,
+		createUserStmt:                       q.createUserStmt,
+		createWebTestResultStmt:              q.createWebTestResultStmt,
+		deleteUserStmt:                       q.deleteUserStmt,
+		getAverageDownloadSpeedStmt:          q.getAverageDownloadSpeedStmt,
+		getAverageLatencyStmt:                q.getAverageLatencyStmt,
+		getAverageUploadSpeedStmt:            q.getAverageUploadSpeedStmt,
+		getClientConfigStmt:                  q.getClientConfigStmt,
+		getGeoBoundsStmt:                     q.getGeoBoundsStmt,
+		getMapDataStmt:                       q.getMapDataStmt,
+		getNetworkAvailabilityStmt:           q.getNetworkAvailabilityStmt,
+		getNetworkTechnologyDistributionStmt: q.getNetworkTechnologyDistributionStmt,
+		getUserStmt:                          q.getUserStmt,
+		getUserByEmailStmt:                   q.getUserByEmailStmt,
+		getUserByIDStmt:                      q.getUserByIDStmt,
+		listMeasurementsStmt:                 q.listMeasurementsStmt,
+		listUsersStmt:                        q.listUsersStmt,
+		updateClientConfigStmt:               q.updateClientConfigStmt,
+		updateUserExecStmt:                   q.updateUserExecStmt,
 	}
 }

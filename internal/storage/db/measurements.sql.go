@@ -293,6 +293,65 @@ func (q *Queries) CreateWebTestResult(ctx context.Context, arg CreateWebTestResu
 	)
 }
 
+const getAverageDownloadSpeed = `-- name: GetAverageDownloadSpeed :one
+SELECT AVG(CAST(throughput_kbps AS FLOAT)) as average_speed
+FROM http_test_results
+WHERE timestamp BETWEEN ? AND ?
+AND test_type = 'DOWNLOAD'
+AND success = true
+`
+
+type GetAverageDownloadSpeedParams struct {
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+}
+
+func (q *Queries) GetAverageDownloadSpeed(ctx context.Context, arg GetAverageDownloadSpeedParams) (interface{}, error) {
+	row := q.queryRow(ctx, q.getAverageDownloadSpeedStmt, getAverageDownloadSpeed, arg.FromTimestamp, arg.ToTimestamp)
+	var average_speed interface{}
+	err := row.Scan(&average_speed)
+	return average_speed, err
+}
+
+const getAverageLatency = `-- name: GetAverageLatency :one
+SELECT AVG(avg_rtt_millis) as average_latency
+FROM ping_test_results
+WHERE timestamp BETWEEN ? AND ?
+AND success = true
+`
+
+type GetAverageLatencyParams struct {
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+}
+
+func (q *Queries) GetAverageLatency(ctx context.Context, arg GetAverageLatencyParams) (interface{}, error) {
+	row := q.queryRow(ctx, q.getAverageLatencyStmt, getAverageLatency, arg.FromTimestamp, arg.ToTimestamp)
+	var average_latency interface{}
+	err := row.Scan(&average_latency)
+	return average_latency, err
+}
+
+const getAverageUploadSpeed = `-- name: GetAverageUploadSpeed :one
+SELECT AVG(CAST(throughput_kbps AS FLOAT)) as average_speed
+FROM http_test_results
+WHERE timestamp BETWEEN ? AND ?
+AND test_type = 'UPLOAD'
+AND success = true
+`
+
+type GetAverageUploadSpeedParams struct {
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+}
+
+func (q *Queries) GetAverageUploadSpeed(ctx context.Context, arg GetAverageUploadSpeedParams) (interface{}, error) {
+	row := q.queryRow(ctx, q.getAverageUploadSpeedStmt, getAverageUploadSpeed, arg.FromTimestamp, arg.ToTimestamp)
+	var average_speed interface{}
+	err := row.Scan(&average_speed)
+	return average_speed, err
+}
+
 const getClientConfig = `-- name: GetClientConfig :one
 SELECT id, sampling_interval_seconds, test_types, created_at, updated_at 
 FROM client_config
@@ -310,6 +369,304 @@ func (q *Queries) GetClientConfig(ctx context.Context) (ClientConfig, error) {
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getGeoBounds = `-- name: GetGeoBounds :one
+SELECT 
+    MIN(CAST(latitude AS FLOAT)) as min_latitude,
+    MAX(CAST(latitude AS FLOAT)) as max_latitude,
+    MIN(CAST(longitude AS FLOAT)) as min_longitude,
+    MAX(CAST(longitude AS FLOAT)) as max_longitude
+FROM network_measurements
+WHERE timestamp BETWEEN ? AND ?
+AND latitude IS NOT NULL 
+AND longitude IS NOT NULL
+`
+
+type GetGeoBoundsParams struct {
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+}
+
+type GetGeoBoundsRow struct {
+	MinLatitude  interface{} `json:"min_latitude"`
+	MaxLatitude  interface{} `json:"max_latitude"`
+	MinLongitude interface{} `json:"min_longitude"`
+	MaxLongitude interface{} `json:"max_longitude"`
+}
+
+func (q *Queries) GetGeoBounds(ctx context.Context, arg GetGeoBoundsParams) (GetGeoBoundsRow, error) {
+	row := q.queryRow(ctx, q.getGeoBoundsStmt, getGeoBounds, arg.FromTimestamp, arg.ToTimestamp)
+	var i GetGeoBoundsRow
+	err := row.Scan(
+		&i.MinLatitude,
+		&i.MaxLatitude,
+		&i.MinLongitude,
+		&i.MaxLongitude,
+	)
+	return i, err
+}
+
+const getMapData = `-- name: GetMapData :many
+SELECT 
+    latitude,
+    longitude,
+    timestamp,
+    cellular_technology,
+    network_operator_name,
+    signal_strength,
+    signal_quality,
+    additional_params
+FROM network_measurements
+WHERE 
+    latitude BETWEEN ? AND ?
+    AND longitude BETWEEN ? AND ?
+ORDER BY timestamp DESC
+`
+
+type GetMapDataParams struct {
+	FromLatitude  sql.NullString `json:"from_latitude"`
+	ToLatitude    sql.NullString `json:"to_latitude"`
+	FromLongitude sql.NullString `json:"from_longitude"`
+	ToLongitude   sql.NullString `json:"to_longitude"`
+}
+
+type GetMapDataRow struct {
+	Latitude            sql.NullString  `json:"latitude"`
+	Longitude           sql.NullString  `json:"longitude"`
+	Timestamp           time.Time       `json:"timestamp"`
+	CellularTechnology  sql.NullString  `json:"cellular_technology"`
+	NetworkOperatorName sql.NullString  `json:"network_operator_name"`
+	SignalStrength      sql.NullInt32   `json:"signal_strength"`
+	SignalQuality       sql.NullInt32   `json:"signal_quality"`
+	AdditionalParams    json.RawMessage `json:"additional_params"`
+}
+
+func (q *Queries) GetMapData(ctx context.Context, arg GetMapDataParams) ([]GetMapDataRow, error) {
+	rows, err := q.query(ctx, q.getMapDataStmt, getMapData,
+		arg.FromLatitude,
+		arg.ToLatitude,
+		arg.FromLongitude,
+		arg.ToLongitude,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetMapDataRow{}
+	for rows.Next() {
+		var i GetMapDataRow
+		if err := rows.Scan(
+			&i.Latitude,
+			&i.Longitude,
+			&i.Timestamp,
+			&i.CellularTechnology,
+			&i.NetworkOperatorName,
+			&i.SignalStrength,
+			&i.SignalQuality,
+			&i.AdditionalParams,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getNetworkAvailability = `-- name: GetNetworkAvailability :one
+WITH test_results AS (
+    SELECT success FROM http_test_results WHERE timestamp BETWEEN ? AND ?
+    UNION ALL
+    SELECT success FROM ping_test_results WHERE timestamp BETWEEN ? AND ?
+    UNION ALL
+    SELECT success FROM dns_test_results WHERE timestamp BETWEEN ? AND ?
+    UNION ALL
+    SELECT success FROM web_test_results WHERE timestamp BETWEEN ? AND ?
+    UNION ALL
+    SELECT success FROM sms_test_results WHERE timestamp BETWEEN ? AND ?
+)
+SELECT 
+    (COUNT(CASE WHEN success = true THEN 1 END) * 100.0 / COUNT(*)) as availability_percentage
+FROM test_results
+`
+
+type GetNetworkAvailabilityParams struct {
+	FromTimestamp    time.Time `json:"from_timestamp"`
+	FromTimestamp_2  time.Time `json:"from_timestamp_2"`
+	FromTimestamp_3  time.Time `json:"from_timestamp_3"`
+	FromTimestamp_4  time.Time `json:"from_timestamp_4"`
+	FromTimestamp_5  time.Time `json:"from_timestamp_5"`
+	ToTimestamp      time.Time `json:"to_timestamp"`
+	ToTimestamp_2    time.Time `json:"to_timestamp_2"`
+	ToTimestamp_3    time.Time `json:"to_timestamp_3"`
+	ToTimestamp_4    time.Time `json:"to_timestamp_4"`
+	ToTimestamp_5    time.Time `json:"to_timestamp_5"`
+	FromTimestamp_6  time.Time `json:"from_timestamp_6"`
+	FromTimestamp_7  time.Time `json:"from_timestamp_7"`
+	FromTimestamp_8  time.Time `json:"from_timestamp_8"`
+	FromTimestamp_9  time.Time `json:"from_timestamp_9"`
+	FromTimestamp_10 time.Time `json:"from_timestamp_10"`
+	ToTimestamp_6    time.Time `json:"to_timestamp_6"`
+	ToTimestamp_7    time.Time `json:"to_timestamp_7"`
+	ToTimestamp_8    time.Time `json:"to_timestamp_8"`
+	ToTimestamp_9    time.Time `json:"to_timestamp_9"`
+	ToTimestamp_10   time.Time `json:"to_timestamp_10"`
+	FromTimestamp_11 time.Time `json:"from_timestamp_11"`
+	FromTimestamp_12 time.Time `json:"from_timestamp_12"`
+	FromTimestamp_13 time.Time `json:"from_timestamp_13"`
+	FromTimestamp_14 time.Time `json:"from_timestamp_14"`
+	FromTimestamp_15 time.Time `json:"from_timestamp_15"`
+	ToTimestamp_11   time.Time `json:"to_timestamp_11"`
+	ToTimestamp_12   time.Time `json:"to_timestamp_12"`
+	ToTimestamp_13   time.Time `json:"to_timestamp_13"`
+	ToTimestamp_14   time.Time `json:"to_timestamp_14"`
+	ToTimestamp_15   time.Time `json:"to_timestamp_15"`
+	FromTimestamp_16 time.Time `json:"from_timestamp_16"`
+	FromTimestamp_17 time.Time `json:"from_timestamp_17"`
+	FromTimestamp_18 time.Time `json:"from_timestamp_18"`
+	FromTimestamp_19 time.Time `json:"from_timestamp_19"`
+	FromTimestamp_20 time.Time `json:"from_timestamp_20"`
+	ToTimestamp_16   time.Time `json:"to_timestamp_16"`
+	ToTimestamp_17   time.Time `json:"to_timestamp_17"`
+	ToTimestamp_18   time.Time `json:"to_timestamp_18"`
+	ToTimestamp_19   time.Time `json:"to_timestamp_19"`
+	ToTimestamp_20   time.Time `json:"to_timestamp_20"`
+	FromTimestamp_21 time.Time `json:"from_timestamp_21"`
+	FromTimestamp_22 time.Time `json:"from_timestamp_22"`
+	FromTimestamp_23 time.Time `json:"from_timestamp_23"`
+	FromTimestamp_24 time.Time `json:"from_timestamp_24"`
+	FromTimestamp_25 time.Time `json:"from_timestamp_25"`
+	ToTimestamp_21   time.Time `json:"to_timestamp_21"`
+	ToTimestamp_22   time.Time `json:"to_timestamp_22"`
+	ToTimestamp_23   time.Time `json:"to_timestamp_23"`
+	ToTimestamp_24   time.Time `json:"to_timestamp_24"`
+	ToTimestamp_25   time.Time `json:"to_timestamp_25"`
+}
+
+func (q *Queries) GetNetworkAvailability(ctx context.Context, arg GetNetworkAvailabilityParams) (interface{}, error) {
+	row := q.queryRow(ctx, q.getNetworkAvailabilityStmt, getNetworkAvailability,
+		arg.FromTimestamp,
+		arg.FromTimestamp_2,
+		arg.FromTimestamp_3,
+		arg.FromTimestamp_4,
+		arg.FromTimestamp_5,
+		arg.ToTimestamp,
+		arg.ToTimestamp_2,
+		arg.ToTimestamp_3,
+		arg.ToTimestamp_4,
+		arg.ToTimestamp_5,
+		arg.FromTimestamp_6,
+		arg.FromTimestamp_7,
+		arg.FromTimestamp_8,
+		arg.FromTimestamp_9,
+		arg.FromTimestamp_10,
+		arg.ToTimestamp_6,
+		arg.ToTimestamp_7,
+		arg.ToTimestamp_8,
+		arg.ToTimestamp_9,
+		arg.ToTimestamp_10,
+		arg.FromTimestamp_11,
+		arg.FromTimestamp_12,
+		arg.FromTimestamp_13,
+		arg.FromTimestamp_14,
+		arg.FromTimestamp_15,
+		arg.ToTimestamp_11,
+		arg.ToTimestamp_12,
+		arg.ToTimestamp_13,
+		arg.ToTimestamp_14,
+		arg.ToTimestamp_15,
+		arg.FromTimestamp_16,
+		arg.FromTimestamp_17,
+		arg.FromTimestamp_18,
+		arg.FromTimestamp_19,
+		arg.FromTimestamp_20,
+		arg.ToTimestamp_16,
+		arg.ToTimestamp_17,
+		arg.ToTimestamp_18,
+		arg.ToTimestamp_19,
+		arg.ToTimestamp_20,
+		arg.FromTimestamp_21,
+		arg.FromTimestamp_22,
+		arg.FromTimestamp_23,
+		arg.FromTimestamp_24,
+		arg.FromTimestamp_25,
+		arg.ToTimestamp_21,
+		arg.ToTimestamp_22,
+		arg.ToTimestamp_23,
+		arg.ToTimestamp_24,
+		arg.ToTimestamp_25,
+	)
+	var availability_percentage interface{}
+	err := row.Scan(&availability_percentage)
+	return availability_percentage, err
+}
+
+const getNetworkTechnologyDistribution = `-- name: GetNetworkTechnologyDistribution :many
+WITH total_measurements AS (
+    SELECT COUNT(*) as total
+    FROM network_measurements 
+    WHERE timestamp BETWEEN ? AND ?
+)
+SELECT 
+    cellular_technology,
+    (COUNT(*) * 100.0 / (SELECT total FROM total_measurements)) as percentage
+FROM network_measurements
+WHERE timestamp BETWEEN ? AND ?
+GROUP BY cellular_technology
+`
+
+type GetNetworkTechnologyDistributionParams struct {
+	FromTimestamp   time.Time `json:"from_timestamp"`
+	FromTimestamp_2 time.Time `json:"from_timestamp_2"`
+	ToTimestamp     time.Time `json:"to_timestamp"`
+	ToTimestamp_2   time.Time `json:"to_timestamp_2"`
+	FromTimestamp_3 time.Time `json:"from_timestamp_3"`
+	FromTimestamp_4 time.Time `json:"from_timestamp_4"`
+	ToTimestamp_3   time.Time `json:"to_timestamp_3"`
+	ToTimestamp_4   time.Time `json:"to_timestamp_4"`
+}
+
+type GetNetworkTechnologyDistributionRow struct {
+	CellularTechnology sql.NullString `json:"cellular_technology"`
+	Percentage         interface{}    `json:"percentage"`
+}
+
+func (q *Queries) GetNetworkTechnologyDistribution(ctx context.Context, arg GetNetworkTechnologyDistributionParams) ([]GetNetworkTechnologyDistributionRow, error) {
+	rows, err := q.query(ctx, q.getNetworkTechnologyDistributionStmt, getNetworkTechnologyDistribution,
+		arg.FromTimestamp,
+		arg.FromTimestamp_2,
+		arg.ToTimestamp,
+		arg.ToTimestamp_2,
+		arg.FromTimestamp_3,
+		arg.FromTimestamp_4,
+		arg.ToTimestamp_3,
+		arg.ToTimestamp_4,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetNetworkTechnologyDistributionRow{}
+	for rows.Next() {
+		var i GetNetworkTechnologyDistributionRow
+		if err := rows.Scan(&i.CellularTechnology, &i.Percentage); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listMeasurements = `-- name: ListMeasurements :many
