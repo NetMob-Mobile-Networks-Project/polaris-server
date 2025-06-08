@@ -110,21 +110,21 @@ INSERT INTO sms_test_results (
 );
 
 -- name: GetAverageDownloadSpeed :one
-SELECT AVG(CAST(throughput_kbps AS FLOAT)) as average_speed
+SELECT CAST(COALESCE(AVG(throughput_kbps), 0) AS DECIMAL(10,2)) as average_speed
 FROM http_test_results
 WHERE timestamp BETWEEN ? AND ?
 AND test_type = 'DOWNLOAD'
 AND success = true;
 
 -- name: GetAverageUploadSpeed :one
-SELECT AVG(CAST(throughput_kbps AS FLOAT)) as average_speed
+SELECT CAST(COALESCE(AVG(throughput_kbps), 0) AS DECIMAL(10,2)) as average_speed
 FROM http_test_results
 WHERE timestamp BETWEEN ? AND ?
 AND test_type = 'UPLOAD'
 AND success = true;
 
 -- name: GetAverageLatency :one
-SELECT AVG(avg_rtt_millis) as average_latency
+SELECT CAST(COALESCE(AVG(avg_rtt_millis), 0) AS DECIMAL(10,2)) as average_latency
 FROM ping_test_results
 WHERE timestamp BETWEEN ? AND ?
 AND success = true;
@@ -142,7 +142,7 @@ WITH test_results AS (
     SELECT success FROM sms_test_results WHERE timestamp BETWEEN ? AND ?
 )
 SELECT 
-    (COUNT(CASE WHEN success = true THEN 1 END) * 100.0 / COUNT(*)) as availability_percentage
+    CAST(COALESCE(COUNT(CASE WHEN success = true THEN 1 END) * 100.0 / COUNT(*), 0) AS DECIMAL(10,2)) as availability_percentage
 FROM test_results;
 
 

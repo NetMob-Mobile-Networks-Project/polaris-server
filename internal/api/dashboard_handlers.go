@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/NetMob-Mobile-Networks-Project/polaris-server/internal/storage/db"
@@ -33,15 +34,17 @@ func (h *Handler) GetAvgDownSpeedHandler(w http.ResponseWriter, r *http.Request)
 		ToTimestamp:   end,
 	})
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Failed to get average download speed")
+		writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get average download speed: %v", err))
 		return
 	}
+
+	averageSpeedFloat, _ := strconv.ParseFloat(averageSpeed, 64)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(Response{
 		Success: true,
 		Data: map[string]interface{}{
-			"averageSpeed": averageSpeed.(float64),
+			"averageSpeed": averageSpeedFloat,
 			"unit":         "kbps",
 		},
 	})
@@ -70,15 +73,17 @@ func (h *Handler) GetAvgUpSpeedHandler(w http.ResponseWriter, r *http.Request) {
 		ToTimestamp:   end,
 	})
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Failed to get average upload speed")
+		writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get average upload speed: %v", err))
 		return
 	}
+
+	averageSpeedFloat, _ := strconv.ParseFloat(averageSpeed, 64)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(Response{
 		Success: true,
 		Data: map[string]interface{}{
-			"averageSpeed": averageSpeed.(float64),
+			"averageSpeed": averageSpeedFloat,
 			"unit":         "kbps",
 		},
 	})
@@ -107,15 +112,17 @@ func (h *Handler) GetAvgLatencyHandler(w http.ResponseWriter, r *http.Request) {
 		ToTimestamp:   end,
 	})
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Failed to get average latency")
+		writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get average latency: %v", err))
 		return
 	}
+
+	averageLatencyFloat, _ := strconv.ParseFloat(averageLatency, 64)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(Response{
 		Success: true,
 		Data: map[string]interface{}{
-			"averageLatency": averageLatency.(float64),
+			"averageLatency": averageLatencyFloat,
 			"unit":           "ms",
 		},
 	})
@@ -144,15 +151,17 @@ func (h *Handler) GetNetworkAvailabilityHandler(w http.ResponseWriter, r *http.R
 		ToTimestamp:   end,
 	})
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Failed to get network availability")
+		writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get network availability: %v", err))
 		return
 	}
+
+	availabilityFloat, _ := strconv.ParseFloat(availability, 64)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(Response{
 		Success: true,
 		Data: map[string]interface{}{
-			"availability": availability.(float64),
+			"availability": availabilityFloat,
 			"unit":         "percent",
 		},
 	})
@@ -242,7 +251,7 @@ func (h *Handler) GetNetworkHistogramHandler(w http.ResponseWriter, r *http.Requ
 			ToTimestamp:   max,
 		})
 		if err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "Failed to get network metrics")
+			writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get network metrics: %v", err))
 			return
 		}
 		download, err := h.db.GetAverageDownloadSpeed(r.Context(), db.GetAverageDownloadSpeedParams{
@@ -250,7 +259,7 @@ func (h *Handler) GetNetworkHistogramHandler(w http.ResponseWriter, r *http.Requ
 			ToTimestamp:   max,
 		})
 		if err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "Failed to get network metrics")
+			writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get network metrics: %v", err))
 			return
 		}
 		latency, err := h.db.GetAverageLatency(r.Context(), db.GetAverageLatencyParams{
@@ -258,13 +267,17 @@ func (h *Handler) GetNetworkHistogramHandler(w http.ResponseWriter, r *http.Requ
 			ToTimestamp:   max,
 		})
 		if err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "Failed to get network metrics")
+			writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get network metrics: %v", err))
 			return
 		}
 
-		uploadData = append(uploadData, upload.(float64))
-		downloadData = append(downloadData, download.(float64))
-		latencyData = append(latencyData, latency.(float64))
+		uploadFloat, _ := strconv.ParseFloat(upload, 64)
+		downloadFloat, _ := strconv.ParseFloat(download, 64)
+		latencyFloat, _ := strconv.ParseFloat(latency, 64)
+
+		uploadData = append(uploadData, uploadFloat)
+		downloadData = append(downloadData, downloadFloat)
+		latencyData = append(latencyData, latencyFloat)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -302,7 +315,7 @@ func (h *Handler) GetNetworkDistributionHandler(w http.ResponseWriter, r *http.R
 		ToTimestamp:   end,
 	})
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Failed to get network distribution")
+		writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get network distribution: %v", err))
 		return
 	}
 
@@ -373,7 +386,7 @@ func (h *Handler) GetMapDataHandler(w http.ResponseWriter, r *http.Request) {
 		ToLongitude:   sql.NullString{String: fmt.Sprintf("%f", maxLongFloat), Valid: maxLongFloat != 0},
 	})
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Failed to get map data")
+		writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get map data: %v", err))
 		return
 	}
 
@@ -449,7 +462,7 @@ func (h *Handler) GetDetailedListMetricsHandler(w http.ResponseWriter, r *http.R
 			Offset: (pageNum - 1) * limit,
 		})
 		if err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "Failed to get detailed list of network measurements")
+			writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get detailed list of network measurements: %v", err))
 			return
 		}
 
@@ -496,7 +509,7 @@ func (h *Handler) GetDetailedListMetricsHandler(w http.ResponseWriter, r *http.R
 			Offset: (pageNum - 1) * limit,
 		})
 		if err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "Failed to get detailed list of network measurements")
+			writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get detailed list of network measurements: %v", err))
 			return
 		}
 

@@ -294,7 +294,7 @@ func (q *Queries) CreateWebTestResult(ctx context.Context, arg CreateWebTestResu
 }
 
 const getAverageDownloadSpeed = `-- name: GetAverageDownloadSpeed :one
-SELECT AVG(CAST(throughput_kbps AS FLOAT)) as average_speed
+SELECT CAST(COALESCE(AVG(throughput_kbps), 0) AS DECIMAL(10,2)) as average_speed
 FROM http_test_results
 WHERE timestamp BETWEEN ? AND ?
 AND test_type = 'DOWNLOAD'
@@ -306,15 +306,15 @@ type GetAverageDownloadSpeedParams struct {
 	ToTimestamp   time.Time `json:"to_timestamp"`
 }
 
-func (q *Queries) GetAverageDownloadSpeed(ctx context.Context, arg GetAverageDownloadSpeedParams) (interface{}, error) {
+func (q *Queries) GetAverageDownloadSpeed(ctx context.Context, arg GetAverageDownloadSpeedParams) (string, error) {
 	row := q.queryRow(ctx, q.getAverageDownloadSpeedStmt, getAverageDownloadSpeed, arg.FromTimestamp, arg.ToTimestamp)
-	var average_speed interface{}
+	var average_speed string
 	err := row.Scan(&average_speed)
 	return average_speed, err
 }
 
 const getAverageLatency = `-- name: GetAverageLatency :one
-SELECT AVG(avg_rtt_millis) as average_latency
+SELECT CAST(COALESCE(AVG(avg_rtt_millis), 0) AS DECIMAL(10,2)) as average_latency
 FROM ping_test_results
 WHERE timestamp BETWEEN ? AND ?
 AND success = true
@@ -325,15 +325,15 @@ type GetAverageLatencyParams struct {
 	ToTimestamp   time.Time `json:"to_timestamp"`
 }
 
-func (q *Queries) GetAverageLatency(ctx context.Context, arg GetAverageLatencyParams) (interface{}, error) {
+func (q *Queries) GetAverageLatency(ctx context.Context, arg GetAverageLatencyParams) (string, error) {
 	row := q.queryRow(ctx, q.getAverageLatencyStmt, getAverageLatency, arg.FromTimestamp, arg.ToTimestamp)
-	var average_latency interface{}
+	var average_latency string
 	err := row.Scan(&average_latency)
 	return average_latency, err
 }
 
 const getAverageUploadSpeed = `-- name: GetAverageUploadSpeed :one
-SELECT AVG(CAST(throughput_kbps AS FLOAT)) as average_speed
+SELECT CAST(COALESCE(AVG(throughput_kbps), 0) AS DECIMAL(10,2)) as average_speed
 FROM http_test_results
 WHERE timestamp BETWEEN ? AND ?
 AND test_type = 'UPLOAD'
@@ -345,9 +345,9 @@ type GetAverageUploadSpeedParams struct {
 	ToTimestamp   time.Time `json:"to_timestamp"`
 }
 
-func (q *Queries) GetAverageUploadSpeed(ctx context.Context, arg GetAverageUploadSpeedParams) (interface{}, error) {
+func (q *Queries) GetAverageUploadSpeed(ctx context.Context, arg GetAverageUploadSpeedParams) (string, error) {
 	row := q.queryRow(ctx, q.getAverageUploadSpeedStmt, getAverageUploadSpeed, arg.FromTimestamp, arg.ToTimestamp)
-	var average_speed interface{}
+	var average_speed string
 	err := row.Scan(&average_speed)
 	return average_speed, err
 }
@@ -492,7 +492,7 @@ WITH test_results AS (
     SELECT success FROM sms_test_results WHERE timestamp BETWEEN ? AND ?
 )
 SELECT 
-    (COUNT(CASE WHEN success = true THEN 1 END) * 100.0 / COUNT(*)) as availability_percentage
+    CAST(COALESCE(COUNT(CASE WHEN success = true THEN 1 END) * 100.0 / COUNT(*), 0) AS DECIMAL(10,2)) as availability_percentage
 FROM test_results
 `
 
@@ -549,7 +549,7 @@ type GetNetworkAvailabilityParams struct {
 	ToTimestamp_25   time.Time `json:"to_timestamp_25"`
 }
 
-func (q *Queries) GetNetworkAvailability(ctx context.Context, arg GetNetworkAvailabilityParams) (interface{}, error) {
+func (q *Queries) GetNetworkAvailability(ctx context.Context, arg GetNetworkAvailabilityParams) (string, error) {
 	row := q.queryRow(ctx, q.getNetworkAvailabilityStmt, getNetworkAvailability,
 		arg.FromTimestamp,
 		arg.FromTimestamp_2,
@@ -602,7 +602,7 @@ func (q *Queries) GetNetworkAvailability(ctx context.Context, arg GetNetworkAvai
 		arg.ToTimestamp_24,
 		arg.ToTimestamp_25,
 	)
-	var availability_percentage interface{}
+	var availability_percentage string
 	err := row.Scan(&availability_percentage)
 	return availability_percentage, err
 }
