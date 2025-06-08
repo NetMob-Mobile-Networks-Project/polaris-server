@@ -66,9 +66,6 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getClientConfigStmt, err = db.PrepareContext(ctx, getClientConfig); err != nil {
 		return nil, fmt.Errorf("error preparing query GetClientConfig: %w", err)
 	}
-	if q.getGeoBoundsStmt, err = db.PrepareContext(ctx, getGeoBounds); err != nil {
-		return nil, fmt.Errorf("error preparing query GetGeoBounds: %w", err)
-	}
 	if q.getMapDataStmt, err = db.PrepareContext(ctx, getMapData); err != nil {
 		return nil, fmt.Errorf("error preparing query GetMapData: %w", err)
 	}
@@ -187,11 +184,6 @@ func (q *Queries) Close() error {
 	if q.getClientConfigStmt != nil {
 		if cerr := q.getClientConfigStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getClientConfigStmt: %w", cerr)
-		}
-	}
-	if q.getGeoBoundsStmt != nil {
-		if cerr := q.getGeoBoundsStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getGeoBoundsStmt: %w", cerr)
 		}
 	}
 	if q.getMapDataStmt != nil {
@@ -322,7 +314,6 @@ type Queries struct {
 	getAverageLatencyStmt                *sql.Stmt
 	getAverageUploadSpeedStmt            *sql.Stmt
 	getClientConfigStmt                  *sql.Stmt
-	getGeoBoundsStmt                     *sql.Stmt
 	getMapDataStmt                       *sql.Stmt
 	getNetworkAvailabilityStmt           *sql.Stmt
 	getNetworkTechnologyDistributionStmt *sql.Stmt
@@ -358,7 +349,6 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getAverageLatencyStmt:                q.getAverageLatencyStmt,
 		getAverageUploadSpeedStmt:            q.getAverageUploadSpeedStmt,
 		getClientConfigStmt:                  q.getClientConfigStmt,
-		getGeoBoundsStmt:                     q.getGeoBoundsStmt,
 		getMapDataStmt:                       q.getMapDataStmt,
 		getNetworkAvailabilityStmt:           q.getNetworkAvailabilityStmt,
 		getNetworkTechnologyDistributionStmt: q.getNetworkTechnologyDistributionStmt,

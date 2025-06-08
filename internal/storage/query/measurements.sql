@@ -130,45 +130,29 @@ WHERE timestamp BETWEEN ? AND ?
 AND success = true;
 
 -- name: GetNetworkAvailability :one
-WITH test_results AS (
-    SELECT success FROM http_test_results WHERE timestamp BETWEEN ? AND ?
-    UNION ALL
-    SELECT success FROM ping_test_results WHERE timestamp BETWEEN ? AND ?
-    UNION ALL
-    SELECT success FROM dns_test_results WHERE timestamp BETWEEN ? AND ?
-    UNION ALL
-    SELECT success FROM web_test_results WHERE timestamp BETWEEN ? AND ?
-    UNION ALL
-    SELECT success FROM sms_test_results WHERE timestamp BETWEEN ? AND ?
-)
 SELECT 
     CAST(COALESCE(COUNT(CASE WHEN success = true THEN 1 END) * 100.0 / COUNT(*), 0) AS DECIMAL(10,2)) as availability_percentage
-FROM test_results;
-
+FROM (
+    SELECT success, timestamp FROM http_test_results
+    UNION ALL
+    SELECT success, timestamp FROM ping_test_results
+    UNION ALL
+    SELECT success, timestamp FROM dns_test_results
+    UNION ALL
+    SELECT success, timestamp FROM web_test_results
+    UNION ALL
+    SELECT success, timestamp FROM sms_test_results
+) as test_results
+WHERE timestamp BETWEEN ? AND ?;
 
 -- name: GetNetworkTechnologyDistribution :many
-WITH total_measurements AS (
-    SELECT COUNT(*) as total
-    FROM network_measurements 
-    WHERE timestamp BETWEEN ? AND ?
-)
 SELECT 
     cellular_technology,
-    (COUNT(*) * 100.0 / (SELECT total FROM total_measurements)) as percentage
-FROM network_measurements
-WHERE timestamp BETWEEN ? AND ?
+    CAST(COUNT(*) * 100.0 / total_count AS DECIMAL(10,2)) as percentage
+FROM network_measurements,
+    (SELECT COUNT(*) as total_count FROM network_measurements WHERE timestamp BETWEEN ? AND ?) as total
+WHERE timestamp BETWEEN ? AND ? 
 GROUP BY cellular_technology;
-
--- name: GetGeoBounds :one
-SELECT 
-    MIN(CAST(latitude AS FLOAT)) as min_latitude,
-    MAX(CAST(latitude AS FLOAT)) as max_latitude,
-    MIN(CAST(longitude AS FLOAT)) as min_longitude,
-    MAX(CAST(longitude AS FLOAT)) as max_longitude
-FROM network_measurements
-WHERE timestamp BETWEEN ? AND ?
-AND latitude IS NOT NULL 
-AND longitude IS NOT NULL;
 
 -- name: GetMapData :many
 SELECT 

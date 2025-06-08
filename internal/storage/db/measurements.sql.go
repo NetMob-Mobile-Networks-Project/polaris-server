@@ -371,42 +371,6 @@ func (q *Queries) GetClientConfig(ctx context.Context) (ClientConfig, error) {
 	return i, err
 }
 
-const getGeoBounds = `-- name: GetGeoBounds :one
-SELECT 
-    MIN(CAST(latitude AS FLOAT)) as min_latitude,
-    MAX(CAST(latitude AS FLOAT)) as max_latitude,
-    MIN(CAST(longitude AS FLOAT)) as min_longitude,
-    MAX(CAST(longitude AS FLOAT)) as max_longitude
-FROM network_measurements
-WHERE timestamp BETWEEN ? AND ?
-AND latitude IS NOT NULL 
-AND longitude IS NOT NULL
-`
-
-type GetGeoBoundsParams struct {
-	FromTimestamp time.Time `json:"from_timestamp"`
-	ToTimestamp   time.Time `json:"to_timestamp"`
-}
-
-type GetGeoBoundsRow struct {
-	MinLatitude  interface{} `json:"min_latitude"`
-	MaxLatitude  interface{} `json:"max_latitude"`
-	MinLongitude interface{} `json:"min_longitude"`
-	MaxLongitude interface{} `json:"max_longitude"`
-}
-
-func (q *Queries) GetGeoBounds(ctx context.Context, arg GetGeoBoundsParams) (GetGeoBoundsRow, error) {
-	row := q.queryRow(ctx, q.getGeoBoundsStmt, getGeoBounds, arg.FromTimestamp, arg.ToTimestamp)
-	var i GetGeoBoundsRow
-	err := row.Scan(
-		&i.MinLatitude,
-		&i.MaxLatitude,
-		&i.MinLongitude,
-		&i.MaxLongitude,
-	)
-	return i, err
-}
-
 const getMapData = `-- name: GetMapData :many
 SELECT 
     latitude,
@@ -480,73 +444,33 @@ func (q *Queries) GetMapData(ctx context.Context, arg GetMapDataParams) ([]GetMa
 }
 
 const getNetworkAvailability = `-- name: GetNetworkAvailability :one
-WITH test_results AS (
-    SELECT success FROM http_test_results WHERE timestamp BETWEEN ? AND ?
-    UNION ALL
-    SELECT success FROM ping_test_results WHERE timestamp BETWEEN ? AND ?
-    UNION ALL
-    SELECT success FROM dns_test_results WHERE timestamp BETWEEN ? AND ?
-    UNION ALL
-    SELECT success FROM web_test_results WHERE timestamp BETWEEN ? AND ?
-    UNION ALL
-    SELECT success FROM sms_test_results WHERE timestamp BETWEEN ? AND ?
-)
 SELECT 
     CAST(COALESCE(COUNT(CASE WHEN success = true THEN 1 END) * 100.0 / COUNT(*), 0) AS DECIMAL(10,2)) as availability_percentage
-FROM test_results
+FROM (
+    SELECT success, timestamp FROM http_test_results
+    UNION ALL
+    SELECT success, timestamp FROM ping_test_results
+    UNION ALL
+    SELECT success, timestamp FROM dns_test_results
+    UNION ALL
+    SELECT success, timestamp FROM web_test_results
+    UNION ALL
+    SELECT success, timestamp FROM sms_test_results
+) as test_results
+WHERE timestamp BETWEEN ? AND ?
 `
 
 type GetNetworkAvailabilityParams struct {
-	FromTimestamp    time.Time `json:"from_timestamp"`
-	FromTimestamp_2  time.Time `json:"from_timestamp_2"`
-	FromTimestamp_3  time.Time `json:"from_timestamp_3"`
-	FromTimestamp_4  time.Time `json:"from_timestamp_4"`
-	FromTimestamp_5  time.Time `json:"from_timestamp_5"`
-	ToTimestamp      time.Time `json:"to_timestamp"`
-	ToTimestamp_2    time.Time `json:"to_timestamp_2"`
-	ToTimestamp_3    time.Time `json:"to_timestamp_3"`
-	ToTimestamp_4    time.Time `json:"to_timestamp_4"`
-	ToTimestamp_5    time.Time `json:"to_timestamp_5"`
-	FromTimestamp_6  time.Time `json:"from_timestamp_6"`
-	FromTimestamp_7  time.Time `json:"from_timestamp_7"`
-	FromTimestamp_8  time.Time `json:"from_timestamp_8"`
-	FromTimestamp_9  time.Time `json:"from_timestamp_9"`
-	FromTimestamp_10 time.Time `json:"from_timestamp_10"`
-	ToTimestamp_6    time.Time `json:"to_timestamp_6"`
-	ToTimestamp_7    time.Time `json:"to_timestamp_7"`
-	ToTimestamp_8    time.Time `json:"to_timestamp_8"`
-	ToTimestamp_9    time.Time `json:"to_timestamp_9"`
-	ToTimestamp_10   time.Time `json:"to_timestamp_10"`
-	FromTimestamp_11 time.Time `json:"from_timestamp_11"`
-	FromTimestamp_12 time.Time `json:"from_timestamp_12"`
-	FromTimestamp_13 time.Time `json:"from_timestamp_13"`
-	FromTimestamp_14 time.Time `json:"from_timestamp_14"`
-	FromTimestamp_15 time.Time `json:"from_timestamp_15"`
-	ToTimestamp_11   time.Time `json:"to_timestamp_11"`
-	ToTimestamp_12   time.Time `json:"to_timestamp_12"`
-	ToTimestamp_13   time.Time `json:"to_timestamp_13"`
-	ToTimestamp_14   time.Time `json:"to_timestamp_14"`
-	ToTimestamp_15   time.Time `json:"to_timestamp_15"`
-	FromTimestamp_16 time.Time `json:"from_timestamp_16"`
-	FromTimestamp_17 time.Time `json:"from_timestamp_17"`
-	FromTimestamp_18 time.Time `json:"from_timestamp_18"`
-	FromTimestamp_19 time.Time `json:"from_timestamp_19"`
-	FromTimestamp_20 time.Time `json:"from_timestamp_20"`
-	ToTimestamp_16   time.Time `json:"to_timestamp_16"`
-	ToTimestamp_17   time.Time `json:"to_timestamp_17"`
-	ToTimestamp_18   time.Time `json:"to_timestamp_18"`
-	ToTimestamp_19   time.Time `json:"to_timestamp_19"`
-	ToTimestamp_20   time.Time `json:"to_timestamp_20"`
-	FromTimestamp_21 time.Time `json:"from_timestamp_21"`
-	FromTimestamp_22 time.Time `json:"from_timestamp_22"`
-	FromTimestamp_23 time.Time `json:"from_timestamp_23"`
-	FromTimestamp_24 time.Time `json:"from_timestamp_24"`
-	FromTimestamp_25 time.Time `json:"from_timestamp_25"`
-	ToTimestamp_21   time.Time `json:"to_timestamp_21"`
-	ToTimestamp_22   time.Time `json:"to_timestamp_22"`
-	ToTimestamp_23   time.Time `json:"to_timestamp_23"`
-	ToTimestamp_24   time.Time `json:"to_timestamp_24"`
-	ToTimestamp_25   time.Time `json:"to_timestamp_25"`
+	FromTimestamp   time.Time `json:"from_timestamp"`
+	FromTimestamp_2 time.Time `json:"from_timestamp_2"`
+	FromTimestamp_3 time.Time `json:"from_timestamp_3"`
+	FromTimestamp_4 time.Time `json:"from_timestamp_4"`
+	FromTimestamp_5 time.Time `json:"from_timestamp_5"`
+	ToTimestamp     time.Time `json:"to_timestamp"`
+	ToTimestamp_2   time.Time `json:"to_timestamp_2"`
+	ToTimestamp_3   time.Time `json:"to_timestamp_3"`
+	ToTimestamp_4   time.Time `json:"to_timestamp_4"`
+	ToTimestamp_5   time.Time `json:"to_timestamp_5"`
 }
 
 func (q *Queries) GetNetworkAvailability(ctx context.Context, arg GetNetworkAvailabilityParams) (string, error) {
@@ -561,46 +485,6 @@ func (q *Queries) GetNetworkAvailability(ctx context.Context, arg GetNetworkAvai
 		arg.ToTimestamp_3,
 		arg.ToTimestamp_4,
 		arg.ToTimestamp_5,
-		arg.FromTimestamp_6,
-		arg.FromTimestamp_7,
-		arg.FromTimestamp_8,
-		arg.FromTimestamp_9,
-		arg.FromTimestamp_10,
-		arg.ToTimestamp_6,
-		arg.ToTimestamp_7,
-		arg.ToTimestamp_8,
-		arg.ToTimestamp_9,
-		arg.ToTimestamp_10,
-		arg.FromTimestamp_11,
-		arg.FromTimestamp_12,
-		arg.FromTimestamp_13,
-		arg.FromTimestamp_14,
-		arg.FromTimestamp_15,
-		arg.ToTimestamp_11,
-		arg.ToTimestamp_12,
-		arg.ToTimestamp_13,
-		arg.ToTimestamp_14,
-		arg.ToTimestamp_15,
-		arg.FromTimestamp_16,
-		arg.FromTimestamp_17,
-		arg.FromTimestamp_18,
-		arg.FromTimestamp_19,
-		arg.FromTimestamp_20,
-		arg.ToTimestamp_16,
-		arg.ToTimestamp_17,
-		arg.ToTimestamp_18,
-		arg.ToTimestamp_19,
-		arg.ToTimestamp_20,
-		arg.FromTimestamp_21,
-		arg.FromTimestamp_22,
-		arg.FromTimestamp_23,
-		arg.FromTimestamp_24,
-		arg.FromTimestamp_25,
-		arg.ToTimestamp_21,
-		arg.ToTimestamp_22,
-		arg.ToTimestamp_23,
-		arg.ToTimestamp_24,
-		arg.ToTimestamp_25,
 	)
 	var availability_percentage string
 	err := row.Scan(&availability_percentage)
@@ -608,16 +492,12 @@ func (q *Queries) GetNetworkAvailability(ctx context.Context, arg GetNetworkAvai
 }
 
 const getNetworkTechnologyDistribution = `-- name: GetNetworkTechnologyDistribution :many
-WITH total_measurements AS (
-    SELECT COUNT(*) as total
-    FROM network_measurements 
-    WHERE timestamp BETWEEN ? AND ?
-)
 SELECT 
     cellular_technology,
-    (COUNT(*) * 100.0 / (SELECT total FROM total_measurements)) as percentage
-FROM network_measurements
-WHERE timestamp BETWEEN ? AND ?
+    CAST(COUNT(*) * 100.0 / total_count AS DECIMAL(10,2)) as percentage
+FROM network_measurements,
+    (SELECT COUNT(*) as total_count FROM network_measurements WHERE timestamp BETWEEN ? AND ?) as total
+WHERE timestamp BETWEEN ? AND ? 
 GROUP BY cellular_technology
 `
 
@@ -634,7 +514,7 @@ type GetNetworkTechnologyDistributionParams struct {
 
 type GetNetworkTechnologyDistributionRow struct {
 	CellularTechnology sql.NullString `json:"cellular_technology"`
-	Percentage         interface{}    `json:"percentage"`
+	Percentage         string         `json:"percentage"`
 }
 
 func (q *Queries) GetNetworkTechnologyDistribution(ctx context.Context, arg GetNetworkTechnologyDistributionParams) ([]GetNetworkTechnologyDistributionRow, error) {

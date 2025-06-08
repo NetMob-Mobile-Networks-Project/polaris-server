@@ -323,8 +323,9 @@ func (h *Handler) GetNetworkDistributionHandler(w http.ResponseWriter, r *http.R
 	var values []float64
 
 	for _, d := range distribution {
+		percentageFloat, _ := strconv.ParseFloat(d.Percentage, 64)
 		labels = append(labels, d.CellularTechnology.String)
-		values = append(values, d.Percentage.(float64))
+		values = append(values, percentageFloat)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
