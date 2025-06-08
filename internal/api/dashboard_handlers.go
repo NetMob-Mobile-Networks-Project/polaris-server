@@ -155,13 +155,13 @@ func (h *Handler) GetNetworkAvailabilityHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	availabilityFloat, _ := strconv.ParseFloat(availability, 64)
+	// availabilityFloat, _ := strconv.ParseFloat(availability, 64)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(Response{
 		Success: true,
 		Data: map[string]interface{}{
-			"availability": availabilityFloat,
+			"availability": availability,
 			"unit":         "percent",
 		},
 	})

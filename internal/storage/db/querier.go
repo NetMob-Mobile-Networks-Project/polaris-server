@@ -27,7 +27,7 @@ type Querier interface {
 	GetAverageUploadSpeed(ctx context.Context, arg GetAverageUploadSpeedParams) (string, error)
 	GetClientConfig(ctx context.Context) (ClientConfig, error)
 	GetMapData(ctx context.Context, arg GetMapDataParams) ([]GetMapDataRow, error)
-	GetNetworkAvailability(ctx context.Context, arg GetNetworkAvailabilityParams) (string, error)
+	GetNetworkAvailability(ctx context.Context, arg GetNetworkAvailabilityParams) (int32, error)
 	GetNetworkTechnologyDistribution(ctx context.Context, arg GetNetworkTechnologyDistributionParams) ([]GetNetworkTechnologyDistributionRow, error)
 	GetUser(ctx context.Context, id int32) (User, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)

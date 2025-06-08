@@ -131,19 +131,15 @@ AND success = true;
 
 -- name: GetNetworkAvailability :one
 SELECT 
-    CAST(COALESCE(COUNT(CASE WHEN success = true THEN 1 END) * 100.0 / COUNT(*), 0) AS DECIMAL(10,2)) as availability_percentage
+    (http_success + ping_success + dns_success + web_success + sms_success) AS availability_percentage
 FROM (
-    SELECT success, timestamp FROM http_test_results
-    UNION ALL
-    SELECT success, timestamp FROM ping_test_results
-    UNION ALL
-    SELECT success, timestamp FROM dns_test_results
-    UNION ALL
-    SELECT success, timestamp FROM web_test_results
-    UNION ALL
-    SELECT success, timestamp FROM sms_test_results
-) as test_results
-WHERE timestamp BETWEEN ? AND ?;
+    SELECT 
+        (SELECT COUNT(CASE WHEN success = true THEN 1 END) FROM http_test_results WHERE timestamp BETWEEN sqlc.arg(from_timestamp) AND sqlc.arg(to_timestamp)) as http_success,
+        (SELECT COUNT(CASE WHEN success = true THEN 1 END) FROM ping_test_results WHERE timestamp BETWEEN sqlc.arg(from_timestamp) AND sqlc.arg(to_timestamp)) as ping_success,
+        (SELECT COUNT(CASE WHEN success = true THEN 1 END) FROM dns_test_results WHERE timestamp BETWEEN sqlc.arg(from_timestamp) AND sqlc.arg(to_timestamp)) as dns_success,
+        (SELECT COUNT(CASE WHEN success = true THEN 1 END) FROM web_test_results WHERE timestamp BETWEEN sqlc.arg(from_timestamp) AND sqlc.arg(to_timestamp)) as web_success,
+        (SELECT COUNT(CASE WHEN success = true THEN 1 END) FROM sms_test_results WHERE timestamp BETWEEN sqlc.arg(from_timestamp) AND sqlc.arg(to_timestamp)) as sms_success
+) counts;
 
 -- name: GetNetworkTechnologyDistribution :many
 SELECT 

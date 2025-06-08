@@ -445,48 +445,76 @@ func (q *Queries) GetMapData(ctx context.Context, arg GetMapDataParams) ([]GetMa
 
 const getNetworkAvailability = `-- name: GetNetworkAvailability :one
 SELECT 
-    CAST(COALESCE(COUNT(CASE WHEN success = true THEN 1 END) * 100.0 / COUNT(*), 0) AS DECIMAL(10,2)) as availability_percentage
+    (http_success + ping_success + dns_success + web_success + sms_success) AS availability_percentage
 FROM (
-    SELECT success, timestamp FROM http_test_results
-    UNION ALL
-    SELECT success, timestamp FROM ping_test_results
-    UNION ALL
-    SELECT success, timestamp FROM dns_test_results
-    UNION ALL
-    SELECT success, timestamp FROM web_test_results
-    UNION ALL
-    SELECT success, timestamp FROM sms_test_results
-) as test_results
-WHERE timestamp BETWEEN ? AND ?
+    SELECT 
+        (SELECT COUNT(CASE WHEN success = true THEN 1 END) FROM http_test_results WHERE timestamp BETWEEN ? AND ?) as http_success,
+        (SELECT COUNT(CASE WHEN success = true THEN 1 END) FROM ping_test_results WHERE timestamp BETWEEN ? AND ?) as ping_success,
+        (SELECT COUNT(CASE WHEN success = true THEN 1 END) FROM dns_test_results WHERE timestamp BETWEEN ? AND ?) as dns_success,
+        (SELECT COUNT(CASE WHEN success = true THEN 1 END) FROM web_test_results WHERE timestamp BETWEEN ? AND ?) as web_success,
+        (SELECT COUNT(CASE WHEN success = true THEN 1 END) FROM sms_test_results WHERE timestamp BETWEEN ? AND ?) as sms_success
+) counts
 `
 
 type GetNetworkAvailabilityParams struct {
-	FromTimestamp   time.Time `json:"from_timestamp"`
-	FromTimestamp_2 time.Time `json:"from_timestamp_2"`
-	FromTimestamp_3 time.Time `json:"from_timestamp_3"`
-	FromTimestamp_4 time.Time `json:"from_timestamp_4"`
-	FromTimestamp_5 time.Time `json:"from_timestamp_5"`
-	ToTimestamp     time.Time `json:"to_timestamp"`
-	ToTimestamp_2   time.Time `json:"to_timestamp_2"`
-	ToTimestamp_3   time.Time `json:"to_timestamp_3"`
-	ToTimestamp_4   time.Time `json:"to_timestamp_4"`
-	ToTimestamp_5   time.Time `json:"to_timestamp_5"`
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
 }
 
-func (q *Queries) GetNetworkAvailability(ctx context.Context, arg GetNetworkAvailabilityParams) (string, error) {
+func (q *Queries) GetNetworkAvailability(ctx context.Context, arg GetNetworkAvailabilityParams) (int32, error) {
 	row := q.queryRow(ctx, q.getNetworkAvailabilityStmt, getNetworkAvailability,
 		arg.FromTimestamp,
-		arg.FromTimestamp_2,
-		arg.FromTimestamp_3,
-		arg.FromTimestamp_4,
-		arg.FromTimestamp_5,
+		arg.FromTimestamp,
+		arg.FromTimestamp,
+		arg.FromTimestamp,
+		arg.FromTimestamp,
 		arg.ToTimestamp,
-		arg.ToTimestamp_2,
-		arg.ToTimestamp_3,
-		arg.ToTimestamp_4,
-		arg.ToTimestamp_5,
+		arg.ToTimestamp,
+		arg.ToTimestamp,
+		arg.ToTimestamp,
+		arg.ToTimestamp,
+		arg.FromTimestamp,
+		arg.FromTimestamp,
+		arg.FromTimestamp,
+		arg.FromTimestamp,
+		arg.FromTimestamp,
+		arg.ToTimestamp,
+		arg.ToTimestamp,
+		arg.ToTimestamp,
+		arg.ToTimestamp,
+		arg.ToTimestamp,
+		arg.FromTimestamp,
+		arg.FromTimestamp,
+		arg.FromTimestamp,
+		arg.FromTimestamp,
+		arg.FromTimestamp,
+		arg.ToTimestamp,
+		arg.ToTimestamp,
+		arg.ToTimestamp,
+		arg.ToTimestamp,
+		arg.ToTimestamp,
+		arg.FromTimestamp,
+		arg.FromTimestamp,
+		arg.FromTimestamp,
+		arg.FromTimestamp,
+		arg.FromTimestamp,
+		arg.ToTimestamp,
+		arg.ToTimestamp,
+		arg.ToTimestamp,
+		arg.ToTimestamp,
+		arg.ToTimestamp,
+		arg.FromTimestamp,
+		arg.FromTimestamp,
+		arg.FromTimestamp,
+		arg.FromTimestamp,
+		arg.FromTimestamp,
+		arg.ToTimestamp,
+		arg.ToTimestamp,
+		arg.ToTimestamp,
+		arg.ToTimestamp,
+		arg.ToTimestamp,
 	)
-	var availability_percentage string
+	var availability_percentage int32
 	err := row.Scan(&availability_percentage)
 	return availability_percentage, err
 }
