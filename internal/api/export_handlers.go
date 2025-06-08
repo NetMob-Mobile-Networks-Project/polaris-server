@@ -36,10 +36,8 @@ func (h *Handler) ExportCSVHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Query all measurements
 	measurements, err := h.db.ListMeasurements(r.Context(), db.ListMeasurementsParams{
-		FromTimestamp: time.Now().AddDate(0, 0, -30), // Last 30 days by default
-		ToTimestamp:   time.Now(),
-		Limit:         10000, // Adjust based on your needs
-		Offset:        0,
+		Limit:  10000,
+		Offset: 0,
 	})
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to query measurements")
@@ -116,10 +114,8 @@ func (h *Handler) ExportKMLHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Query all measurements
 	measurements, err := h.db.ListMeasurements(r.Context(), db.ListMeasurementsParams{
-		FromTimestamp: time.Now().AddDate(0, 0, -30), // Last 30 days by default
-		ToTimestamp:   time.Now(),
-		Limit:         10000, // Adjust based on your needs
-		Offset:        0,
+		Limit:  10000,
+		Offset: 0,
 	})
 	if err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to query measurements")

@@ -314,25 +314,17 @@ func (q *Queries) GetClientConfig(ctx context.Context) (ClientConfig, error) {
 
 const listMeasurements = `-- name: ListMeasurements :many
 SELECT id, device_id, timestamp, latitude, longitude, cellular_technology, network_operator_name, network_operator_mccmnc, lac, rac, tac, cell_id, arfcn, signal_strength, signal_quality, additional_params, created_at FROM network_measurements
-WHERE timestamp BETWEEN ? AND ?
 ORDER BY timestamp DESC
 LIMIT ? OFFSET ?
 `
 
 type ListMeasurementsParams struct {
-	FromTimestamp time.Time `json:"from_timestamp"`
-	ToTimestamp   time.Time `json:"to_timestamp"`
-	Limit         int32     `json:"limit"`
-	Offset        int32     `json:"offset"`
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
 }
 
 func (q *Queries) ListMeasurements(ctx context.Context, arg ListMeasurementsParams) ([]NetworkMeasurement, error) {
-	rows, err := q.query(ctx, q.listMeasurementsStmt, listMeasurements,
-		arg.FromTimestamp,
-		arg.ToTimestamp,
-		arg.Limit,
-		arg.Offset,
-	)
+	rows, err := q.query(ctx, q.listMeasurementsStmt, listMeasurements, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
