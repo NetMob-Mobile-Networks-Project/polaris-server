@@ -146,22 +146,69 @@ func (h *Handler) GetNetworkAvailabilityHandler(w http.ResponseWriter, r *http.R
 		start = time.Now().Add(-30 * 24 * time.Hour)
 	}
 
-	availability, err := h.db.GetNetworkAvailability(r.Context(), db.GetNetworkAvailabilityParams{
+	httpResult, err := h.db.GetHttpSuccessAndTotal(r.Context(), db.GetHttpSuccessAndTotalParams{
 		FromTimestamp: start,
 		ToTimestamp:   end,
 	})
 	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get network availability: %v", err))
+		writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get http success and total: %v", err))
 		return
 	}
 
-	// availabilityFloat, _ := strconv.ParseFloat(availability, 64)
+	pingResult, err := h.db.GetPingSuccessAndTotal(r.Context(), db.GetPingSuccessAndTotalParams{
+		FromTimestamp: start,
+		ToTimestamp:   end,
+	})
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get ping success and total: %v", err))
+		return
+	}
+
+	dnsResult, err := h.db.GetDnsSuccessAndTotal(r.Context(), db.GetDnsSuccessAndTotalParams{
+		FromTimestamp: start,
+		ToTimestamp:   end,
+	})
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get dns success and total: %v", err))
+		return
+	}
+
+	webResult, err := h.db.GetWebSuccessAndTotal(r.Context(), db.GetWebSuccessAndTotalParams{
+		FromTimestamp: start,
+		ToTimestamp:   end,
+	})
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get web success and total: %v", err))
+		return
+	}
+
+	smsResult, err := h.db.GetSmsSuccessAndTotal(r.Context(), db.GetSmsSuccessAndTotalParams{
+		FromTimestamp: start,
+		ToTimestamp:   end,
+	})
+	if err != nil {
+		writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get sms success and total: %v", err))
+		return
+	}
+
+	availability := (httpResult.HttpSuccess +
+		pingResult.PingSuccess +
+		dnsResult.DnsSuccess +
+		webResult.WebSuccess +
+		smsResult.SmsSuccess) /
+		(httpResult.HttpTotal +
+			pingResult.PingTotal +
+			dnsResult.DnsTotal +
+			webResult.WebTotal +
+			smsResult.SmsTotal)
+
+	availabilityFloat := availability * 100
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(Response{
 		Success: true,
 		Data: map[string]interface{}{
-			"availability": availability,
+			"availability": availabilityFloat,
 			"unit":         "percent",
 		},
 	})

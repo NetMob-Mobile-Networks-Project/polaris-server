@@ -129,17 +129,41 @@ FROM ping_test_results
 WHERE timestamp BETWEEN ? AND ?
 AND success = true;
 
--- name: GetNetworkAvailability :one
+
+-- name: GetHttpSuccessAndTotal :one
 SELECT 
-    (http_success + ping_success + dns_success + web_success + sms_success) AS availability_percentage
-FROM (
-    SELECT 
-        (SELECT COUNT(CASE WHEN success = true THEN 1 END) FROM http_test_results WHERE timestamp BETWEEN sqlc.arg(from_timestamp) AND sqlc.arg(to_timestamp)) as http_success,
-        (SELECT COUNT(CASE WHEN success = true THEN 1 END) FROM ping_test_results WHERE timestamp BETWEEN sqlc.arg(from_timestamp) AND sqlc.arg(to_timestamp)) as ping_success,
-        (SELECT COUNT(CASE WHEN success = true THEN 1 END) FROM dns_test_results WHERE timestamp BETWEEN sqlc.arg(from_timestamp) AND sqlc.arg(to_timestamp)) as dns_success,
-        (SELECT COUNT(CASE WHEN success = true THEN 1 END) FROM web_test_results WHERE timestamp BETWEEN sqlc.arg(from_timestamp) AND sqlc.arg(to_timestamp)) as web_success,
-        (SELECT COUNT(CASE WHEN success = true THEN 1 END) FROM sms_test_results WHERE timestamp BETWEEN sqlc.arg(from_timestamp) AND sqlc.arg(to_timestamp)) as sms_success
-) counts;
+    COUNT(CASE WHEN success = true THEN 1 END) as http_success,
+    COUNT(*) as http_total
+FROM http_test_results
+WHERE timestamp BETWEEN ? AND ?;
+
+-- name: GetPingSuccessAndTotal :one
+SELECT 
+    COUNT(CASE WHEN success = true THEN 1 END) as ping_success,
+    COUNT(*) as ping_total
+FROM ping_test_results
+WHERE timestamp BETWEEN ? AND ?;
+
+-- name: GetDnsSuccessAndTotal :one
+SELECT 
+    COUNT(CASE WHEN success = true THEN 1 END) as dns_success,
+    COUNT(*) as dns_total
+FROM dns_test_results
+WHERE timestamp BETWEEN ? AND ?;
+
+-- name: GetWebSuccessAndTotal :one
+SELECT 
+    COUNT(CASE WHEN success = true THEN 1 END) as web_success,
+    COUNT(*) as web_total
+FROM web_test_results
+WHERE timestamp BETWEEN ? AND ?;
+
+-- name: GetSmsSuccessAndTotal :one
+SELECT 
+    COUNT(CASE WHEN success = true THEN 1 END) as sms_success,
+    COUNT(*) as sms_total
+FROM sms_test_results
+WHERE timestamp BETWEEN ? AND ?;
 
 -- name: GetNetworkTechnologyDistribution :many
 SELECT 

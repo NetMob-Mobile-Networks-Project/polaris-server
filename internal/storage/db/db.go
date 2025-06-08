@@ -66,14 +66,23 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getClientConfigStmt, err = db.PrepareContext(ctx, getClientConfig); err != nil {
 		return nil, fmt.Errorf("error preparing query GetClientConfig: %w", err)
 	}
+	if q.getDnsSuccessAndTotalStmt, err = db.PrepareContext(ctx, getDnsSuccessAndTotal); err != nil {
+		return nil, fmt.Errorf("error preparing query GetDnsSuccessAndTotal: %w", err)
+	}
+	if q.getHttpSuccessAndTotalStmt, err = db.PrepareContext(ctx, getHttpSuccessAndTotal); err != nil {
+		return nil, fmt.Errorf("error preparing query GetHttpSuccessAndTotal: %w", err)
+	}
 	if q.getMapDataStmt, err = db.PrepareContext(ctx, getMapData); err != nil {
 		return nil, fmt.Errorf("error preparing query GetMapData: %w", err)
 	}
-	if q.getNetworkAvailabilityStmt, err = db.PrepareContext(ctx, getNetworkAvailability); err != nil {
-		return nil, fmt.Errorf("error preparing query GetNetworkAvailability: %w", err)
-	}
 	if q.getNetworkTechnologyDistributionStmt, err = db.PrepareContext(ctx, getNetworkTechnologyDistribution); err != nil {
 		return nil, fmt.Errorf("error preparing query GetNetworkTechnologyDistribution: %w", err)
+	}
+	if q.getPingSuccessAndTotalStmt, err = db.PrepareContext(ctx, getPingSuccessAndTotal); err != nil {
+		return nil, fmt.Errorf("error preparing query GetPingSuccessAndTotal: %w", err)
+	}
+	if q.getSmsSuccessAndTotalStmt, err = db.PrepareContext(ctx, getSmsSuccessAndTotal); err != nil {
+		return nil, fmt.Errorf("error preparing query GetSmsSuccessAndTotal: %w", err)
 	}
 	if q.getUserStmt, err = db.PrepareContext(ctx, getUser); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUser: %w", err)
@@ -83,6 +92,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	}
 	if q.getUserByIDStmt, err = db.PrepareContext(ctx, getUserByID); err != nil {
 		return nil, fmt.Errorf("error preparing query GetUserByID: %w", err)
+	}
+	if q.getWebSuccessAndTotalStmt, err = db.PrepareContext(ctx, getWebSuccessAndTotal); err != nil {
+		return nil, fmt.Errorf("error preparing query GetWebSuccessAndTotal: %w", err)
 	}
 	if q.listDnsMeasurementsStmt, err = db.PrepareContext(ctx, listDnsMeasurements); err != nil {
 		return nil, fmt.Errorf("error preparing query ListDnsMeasurements: %w", err)
@@ -186,19 +198,34 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getClientConfigStmt: %w", cerr)
 		}
 	}
+	if q.getDnsSuccessAndTotalStmt != nil {
+		if cerr := q.getDnsSuccessAndTotalStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getDnsSuccessAndTotalStmt: %w", cerr)
+		}
+	}
+	if q.getHttpSuccessAndTotalStmt != nil {
+		if cerr := q.getHttpSuccessAndTotalStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getHttpSuccessAndTotalStmt: %w", cerr)
+		}
+	}
 	if q.getMapDataStmt != nil {
 		if cerr := q.getMapDataStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getMapDataStmt: %w", cerr)
 		}
 	}
-	if q.getNetworkAvailabilityStmt != nil {
-		if cerr := q.getNetworkAvailabilityStmt.Close(); cerr != nil {
-			err = fmt.Errorf("error closing getNetworkAvailabilityStmt: %w", cerr)
-		}
-	}
 	if q.getNetworkTechnologyDistributionStmt != nil {
 		if cerr := q.getNetworkTechnologyDistributionStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getNetworkTechnologyDistributionStmt: %w", cerr)
+		}
+	}
+	if q.getPingSuccessAndTotalStmt != nil {
+		if cerr := q.getPingSuccessAndTotalStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getPingSuccessAndTotalStmt: %w", cerr)
+		}
+	}
+	if q.getSmsSuccessAndTotalStmt != nil {
+		if cerr := q.getSmsSuccessAndTotalStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getSmsSuccessAndTotalStmt: %w", cerr)
 		}
 	}
 	if q.getUserStmt != nil {
@@ -214,6 +241,11 @@ func (q *Queries) Close() error {
 	if q.getUserByIDStmt != nil {
 		if cerr := q.getUserByIDStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getUserByIDStmt: %w", cerr)
+		}
+	}
+	if q.getWebSuccessAndTotalStmt != nil {
+		if cerr := q.getWebSuccessAndTotalStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getWebSuccessAndTotalStmt: %w", cerr)
 		}
 	}
 	if q.listDnsMeasurementsStmt != nil {
@@ -314,12 +346,16 @@ type Queries struct {
 	getAverageLatencyStmt                *sql.Stmt
 	getAverageUploadSpeedStmt            *sql.Stmt
 	getClientConfigStmt                  *sql.Stmt
+	getDnsSuccessAndTotalStmt            *sql.Stmt
+	getHttpSuccessAndTotalStmt           *sql.Stmt
 	getMapDataStmt                       *sql.Stmt
-	getNetworkAvailabilityStmt           *sql.Stmt
 	getNetworkTechnologyDistributionStmt *sql.Stmt
+	getPingSuccessAndTotalStmt           *sql.Stmt
+	getSmsSuccessAndTotalStmt            *sql.Stmt
 	getUserStmt                          *sql.Stmt
 	getUserByEmailStmt                   *sql.Stmt
 	getUserByIDStmt                      *sql.Stmt
+	getWebSuccessAndTotalStmt            *sql.Stmt
 	listDnsMeasurementsStmt              *sql.Stmt
 	listHttpMeasurementsStmt             *sql.Stmt
 	listMeasurementsStmt                 *sql.Stmt
@@ -349,12 +385,16 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getAverageLatencyStmt:                q.getAverageLatencyStmt,
 		getAverageUploadSpeedStmt:            q.getAverageUploadSpeedStmt,
 		getClientConfigStmt:                  q.getClientConfigStmt,
+		getDnsSuccessAndTotalStmt:            q.getDnsSuccessAndTotalStmt,
+		getHttpSuccessAndTotalStmt:           q.getHttpSuccessAndTotalStmt,
 		getMapDataStmt:                       q.getMapDataStmt,
-		getNetworkAvailabilityStmt:           q.getNetworkAvailabilityStmt,
 		getNetworkTechnologyDistributionStmt: q.getNetworkTechnologyDistributionStmt,
+		getPingSuccessAndTotalStmt:           q.getPingSuccessAndTotalStmt,
+		getSmsSuccessAndTotalStmt:            q.getSmsSuccessAndTotalStmt,
 		getUserStmt:                          q.getUserStmt,
 		getUserByEmailStmt:                   q.getUserByEmailStmt,
 		getUserByIDStmt:                      q.getUserByIDStmt,
+		getWebSuccessAndTotalStmt:            q.getWebSuccessAndTotalStmt,
 		listDnsMeasurementsStmt:              q.listDnsMeasurementsStmt,
 		listHttpMeasurementsStmt:             q.listHttpMeasurementsStmt,
 		listMeasurementsStmt:                 q.listMeasurementsStmt,

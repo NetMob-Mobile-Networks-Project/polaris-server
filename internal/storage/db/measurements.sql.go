@@ -371,6 +371,56 @@ func (q *Queries) GetClientConfig(ctx context.Context) (ClientConfig, error) {
 	return i, err
 }
 
+const getDnsSuccessAndTotal = `-- name: GetDnsSuccessAndTotal :one
+SELECT 
+    COUNT(CASE WHEN success = true THEN 1 END) as dns_success,
+    COUNT(*) as dns_total
+FROM dns_test_results
+WHERE timestamp BETWEEN ? AND ?
+`
+
+type GetDnsSuccessAndTotalParams struct {
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+}
+
+type GetDnsSuccessAndTotalRow struct {
+	DnsSuccess int64 `json:"dns_success"`
+	DnsTotal   int64 `json:"dns_total"`
+}
+
+func (q *Queries) GetDnsSuccessAndTotal(ctx context.Context, arg GetDnsSuccessAndTotalParams) (GetDnsSuccessAndTotalRow, error) {
+	row := q.queryRow(ctx, q.getDnsSuccessAndTotalStmt, getDnsSuccessAndTotal, arg.FromTimestamp, arg.ToTimestamp)
+	var i GetDnsSuccessAndTotalRow
+	err := row.Scan(&i.DnsSuccess, &i.DnsTotal)
+	return i, err
+}
+
+const getHttpSuccessAndTotal = `-- name: GetHttpSuccessAndTotal :one
+SELECT 
+    COUNT(CASE WHEN success = true THEN 1 END) as http_success,
+    COUNT(*) as http_total
+FROM http_test_results
+WHERE timestamp BETWEEN ? AND ?
+`
+
+type GetHttpSuccessAndTotalParams struct {
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+}
+
+type GetHttpSuccessAndTotalRow struct {
+	HttpSuccess int64 `json:"http_success"`
+	HttpTotal   int64 `json:"http_total"`
+}
+
+func (q *Queries) GetHttpSuccessAndTotal(ctx context.Context, arg GetHttpSuccessAndTotalParams) (GetHttpSuccessAndTotalRow, error) {
+	row := q.queryRow(ctx, q.getHttpSuccessAndTotalStmt, getHttpSuccessAndTotal, arg.FromTimestamp, arg.ToTimestamp)
+	var i GetHttpSuccessAndTotalRow
+	err := row.Scan(&i.HttpSuccess, &i.HttpTotal)
+	return i, err
+}
+
 const getMapData = `-- name: GetMapData :many
 SELECT 
     latitude,
@@ -443,82 +493,6 @@ func (q *Queries) GetMapData(ctx context.Context, arg GetMapDataParams) ([]GetMa
 	return items, nil
 }
 
-const getNetworkAvailability = `-- name: GetNetworkAvailability :one
-SELECT 
-    (http_success + ping_success + dns_success + web_success + sms_success) AS availability_percentage
-FROM (
-    SELECT 
-        (SELECT COUNT(CASE WHEN success = true THEN 1 END) FROM http_test_results WHERE timestamp BETWEEN ? AND ?) as http_success,
-        (SELECT COUNT(CASE WHEN success = true THEN 1 END) FROM ping_test_results WHERE timestamp BETWEEN ? AND ?) as ping_success,
-        (SELECT COUNT(CASE WHEN success = true THEN 1 END) FROM dns_test_results WHERE timestamp BETWEEN ? AND ?) as dns_success,
-        (SELECT COUNT(CASE WHEN success = true THEN 1 END) FROM web_test_results WHERE timestamp BETWEEN ? AND ?) as web_success,
-        (SELECT COUNT(CASE WHEN success = true THEN 1 END) FROM sms_test_results WHERE timestamp BETWEEN ? AND ?) as sms_success
-) counts
-`
-
-type GetNetworkAvailabilityParams struct {
-	FromTimestamp time.Time `json:"from_timestamp"`
-	ToTimestamp   time.Time `json:"to_timestamp"`
-}
-
-func (q *Queries) GetNetworkAvailability(ctx context.Context, arg GetNetworkAvailabilityParams) (int32, error) {
-	row := q.queryRow(ctx, q.getNetworkAvailabilityStmt, getNetworkAvailability,
-		arg.FromTimestamp,
-		arg.FromTimestamp,
-		arg.FromTimestamp,
-		arg.FromTimestamp,
-		arg.FromTimestamp,
-		arg.ToTimestamp,
-		arg.ToTimestamp,
-		arg.ToTimestamp,
-		arg.ToTimestamp,
-		arg.ToTimestamp,
-		arg.FromTimestamp,
-		arg.FromTimestamp,
-		arg.FromTimestamp,
-		arg.FromTimestamp,
-		arg.FromTimestamp,
-		arg.ToTimestamp,
-		arg.ToTimestamp,
-		arg.ToTimestamp,
-		arg.ToTimestamp,
-		arg.ToTimestamp,
-		arg.FromTimestamp,
-		arg.FromTimestamp,
-		arg.FromTimestamp,
-		arg.FromTimestamp,
-		arg.FromTimestamp,
-		arg.ToTimestamp,
-		arg.ToTimestamp,
-		arg.ToTimestamp,
-		arg.ToTimestamp,
-		arg.ToTimestamp,
-		arg.FromTimestamp,
-		arg.FromTimestamp,
-		arg.FromTimestamp,
-		arg.FromTimestamp,
-		arg.FromTimestamp,
-		arg.ToTimestamp,
-		arg.ToTimestamp,
-		arg.ToTimestamp,
-		arg.ToTimestamp,
-		arg.ToTimestamp,
-		arg.FromTimestamp,
-		arg.FromTimestamp,
-		arg.FromTimestamp,
-		arg.FromTimestamp,
-		arg.FromTimestamp,
-		arg.ToTimestamp,
-		arg.ToTimestamp,
-		arg.ToTimestamp,
-		arg.ToTimestamp,
-		arg.ToTimestamp,
-	)
-	var availability_percentage int32
-	err := row.Scan(&availability_percentage)
-	return availability_percentage, err
-}
-
 const getNetworkTechnologyDistribution = `-- name: GetNetworkTechnologyDistribution :many
 SELECT 
     cellular_technology,
@@ -575,6 +549,81 @@ func (q *Queries) GetNetworkTechnologyDistribution(ctx context.Context, arg GetN
 		return nil, err
 	}
 	return items, nil
+}
+
+const getPingSuccessAndTotal = `-- name: GetPingSuccessAndTotal :one
+SELECT 
+    COUNT(CASE WHEN success = true THEN 1 END) as ping_success,
+    COUNT(*) as ping_total
+FROM ping_test_results
+WHERE timestamp BETWEEN ? AND ?
+`
+
+type GetPingSuccessAndTotalParams struct {
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+}
+
+type GetPingSuccessAndTotalRow struct {
+	PingSuccess int64 `json:"ping_success"`
+	PingTotal   int64 `json:"ping_total"`
+}
+
+func (q *Queries) GetPingSuccessAndTotal(ctx context.Context, arg GetPingSuccessAndTotalParams) (GetPingSuccessAndTotalRow, error) {
+	row := q.queryRow(ctx, q.getPingSuccessAndTotalStmt, getPingSuccessAndTotal, arg.FromTimestamp, arg.ToTimestamp)
+	var i GetPingSuccessAndTotalRow
+	err := row.Scan(&i.PingSuccess, &i.PingTotal)
+	return i, err
+}
+
+const getSmsSuccessAndTotal = `-- name: GetSmsSuccessAndTotal :one
+SELECT 
+    COUNT(CASE WHEN success = true THEN 1 END) as sms_success,
+    COUNT(*) as sms_total
+FROM sms_test_results
+WHERE timestamp BETWEEN ? AND ?
+`
+
+type GetSmsSuccessAndTotalParams struct {
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+}
+
+type GetSmsSuccessAndTotalRow struct {
+	SmsSuccess int64 `json:"sms_success"`
+	SmsTotal   int64 `json:"sms_total"`
+}
+
+func (q *Queries) GetSmsSuccessAndTotal(ctx context.Context, arg GetSmsSuccessAndTotalParams) (GetSmsSuccessAndTotalRow, error) {
+	row := q.queryRow(ctx, q.getSmsSuccessAndTotalStmt, getSmsSuccessAndTotal, arg.FromTimestamp, arg.ToTimestamp)
+	var i GetSmsSuccessAndTotalRow
+	err := row.Scan(&i.SmsSuccess, &i.SmsTotal)
+	return i, err
+}
+
+const getWebSuccessAndTotal = `-- name: GetWebSuccessAndTotal :one
+SELECT 
+    COUNT(CASE WHEN success = true THEN 1 END) as web_success,
+    COUNT(*) as web_total
+FROM web_test_results
+WHERE timestamp BETWEEN ? AND ?
+`
+
+type GetWebSuccessAndTotalParams struct {
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+}
+
+type GetWebSuccessAndTotalRow struct {
+	WebSuccess int64 `json:"web_success"`
+	WebTotal   int64 `json:"web_total"`
+}
+
+func (q *Queries) GetWebSuccessAndTotal(ctx context.Context, arg GetWebSuccessAndTotalParams) (GetWebSuccessAndTotalRow, error) {
+	row := q.queryRow(ctx, q.getWebSuccessAndTotalStmt, getWebSuccessAndTotal, arg.FromTimestamp, arg.ToTimestamp)
+	var i GetWebSuccessAndTotalRow
+	err := row.Scan(&i.WebSuccess, &i.WebTotal)
+	return i, err
 }
 
 const listDnsMeasurements = `-- name: ListDnsMeasurements :many
