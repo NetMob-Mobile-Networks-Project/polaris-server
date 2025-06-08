@@ -168,9 +168,8 @@ WHERE timestamp BETWEEN ? AND ?;
 -- name: GetNetworkTechnologyDistribution :many
 SELECT 
     cellular_technology,
-    CAST(COUNT(*) * 100.0 / total_count AS DECIMAL(10,2)) as percentage
-FROM network_measurements,
-    (SELECT COUNT(*) as total_count FROM network_measurements WHERE timestamp BETWEEN ? AND ?) as total
+    CAST(COUNT(cellular_technology) * 100.0 / COUNT(*) AS DECIMAL(10,2)) as percentage
+FROM network_measurements
 WHERE timestamp BETWEEN ? AND ? 
 GROUP BY cellular_technology;
 

@@ -496,22 +496,15 @@ func (q *Queries) GetMapData(ctx context.Context, arg GetMapDataParams) ([]GetMa
 const getNetworkTechnologyDistribution = `-- name: GetNetworkTechnologyDistribution :many
 SELECT 
     cellular_technology,
-    CAST(COUNT(*) * 100.0 / total_count AS DECIMAL(10,2)) as percentage
-FROM network_measurements,
-    (SELECT COUNT(*) as total_count FROM network_measurements WHERE timestamp BETWEEN ? AND ?) as total
+    CAST(COUNT(cellular_technology) * 100.0 / COUNT(*) AS DECIMAL(10,2)) as percentage
+FROM network_measurements
 WHERE timestamp BETWEEN ? AND ? 
 GROUP BY cellular_technology
 `
 
 type GetNetworkTechnologyDistributionParams struct {
-	FromTimestamp   time.Time `json:"from_timestamp"`
-	FromTimestamp_2 time.Time `json:"from_timestamp_2"`
-	ToTimestamp     time.Time `json:"to_timestamp"`
-	ToTimestamp_2   time.Time `json:"to_timestamp_2"`
-	FromTimestamp_3 time.Time `json:"from_timestamp_3"`
-	FromTimestamp_4 time.Time `json:"from_timestamp_4"`
-	ToTimestamp_3   time.Time `json:"to_timestamp_3"`
-	ToTimestamp_4   time.Time `json:"to_timestamp_4"`
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
 }
 
 type GetNetworkTechnologyDistributionRow struct {
@@ -520,16 +513,7 @@ type GetNetworkTechnologyDistributionRow struct {
 }
 
 func (q *Queries) GetNetworkTechnologyDistribution(ctx context.Context, arg GetNetworkTechnologyDistributionParams) ([]GetNetworkTechnologyDistributionRow, error) {
-	rows, err := q.query(ctx, q.getNetworkTechnologyDistributionStmt, getNetworkTechnologyDistribution,
-		arg.FromTimestamp,
-		arg.FromTimestamp_2,
-		arg.ToTimestamp,
-		arg.ToTimestamp_2,
-		arg.FromTimestamp_3,
-		arg.FromTimestamp_4,
-		arg.ToTimestamp_3,
-		arg.ToTimestamp_4,
-	)
+	rows, err := q.query(ctx, q.getNetworkTechnologyDistributionStmt, getNetworkTechnologyDistribution, arg.FromTimestamp, arg.ToTimestamp)
 	if err != nil {
 		return nil, err
 	}

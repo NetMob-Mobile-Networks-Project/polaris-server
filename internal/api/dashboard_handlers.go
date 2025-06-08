@@ -191,16 +191,15 @@ func (h *Handler) GetNetworkAvailabilityHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	availability := (httpResult.HttpSuccess +
-		pingResult.PingSuccess +
-		dnsResult.DnsSuccess +
-		webResult.WebSuccess +
-		smsResult.SmsSuccess) /
-		(httpResult.HttpTotal +
-			pingResult.PingTotal +
-			dnsResult.DnsTotal +
-			webResult.WebTotal +
-			smsResult.SmsTotal)
+	availability := float64(httpResult.HttpSuccess+
+		pingResult.PingSuccess+
+		dnsResult.DnsSuccess+
+		webResult.WebSuccess+
+		smsResult.SmsSuccess) / float64(httpResult.HttpTotal+
+		pingResult.PingTotal+
+		dnsResult.DnsTotal+
+		webResult.WebTotal+
+		smsResult.SmsTotal)
 
 	availabilityFloat := availability * 100
 
