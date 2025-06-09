@@ -34,7 +34,6 @@ INSERT INTO network_measurements (
 
 -- name: ListMeasurements :many
 SELECT * FROM network_measurements
-WHERE timestamp BETWEEN ? AND ?
 ORDER BY timestamp DESC
 LIMIT ? OFFSET ?;
 
