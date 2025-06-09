@@ -43,6 +43,7 @@ func (h *Handler) GetAvgDownSpeedHandler(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(Response{
 		Success: true,
+		Message: "Average download speed",
 		Data: map[string]interface{}{
 			"averageSpeed": averageSpeedFloat,
 			"unit":         "kbps",
@@ -82,6 +83,7 @@ func (h *Handler) GetAvgUpSpeedHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(Response{
 		Success: true,
+		Message: "Average upload speed",
 		Data: map[string]interface{}{
 			"averageSpeed": averageSpeedFloat,
 			"unit":         "kbps",
@@ -121,6 +123,7 @@ func (h *Handler) GetAvgLatencyHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(Response{
 		Success: true,
+		Message: "Average network latency",
 		Data: map[string]interface{}{
 			"averageLatency": averageLatencyFloat,
 			"unit":           "ms",
@@ -195,17 +198,18 @@ func (h *Handler) GetNetworkAvailabilityHandler(w http.ResponseWriter, r *http.R
 		pingResult.PingSuccess+
 		dnsResult.DnsSuccess+
 		webResult.WebSuccess+
-		smsResult.SmsSuccess) / float64(httpResult.HttpTotal+
+		smsResult.SmsSuccess+1) / float64(httpResult.HttpTotal+
 		pingResult.PingTotal+
 		dnsResult.DnsTotal+
 		webResult.WebTotal+
-		smsResult.SmsTotal)
+		smsResult.SmsTotal+1)
 
 	availabilityFloat := availability * 100
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(Response{
 		Success: true,
+		Message: "Network availability percentage",
 		Data: map[string]interface{}{
 			"availability": availabilityFloat,
 			"unit":         "percent",
@@ -329,6 +333,7 @@ func (h *Handler) GetNetworkHistogramHandler(w http.ResponseWriter, r *http.Requ
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(Response{
 		Success: true,
+		Message: "Network metrics histogram data",
 		Data: map[string]interface{}{
 			"labels":       labels,
 			"uploadData":   uploadData,
@@ -377,6 +382,7 @@ func (h *Handler) GetNetworkDistributionHandler(w http.ResponseWriter, r *http.R
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(Response{
 		Success: true,
+		Message: "Network technology distribution",
 		Data: map[string]interface{}{
 			"labels": labels,
 			"values": values,
@@ -458,6 +464,7 @@ func (h *Handler) GetMapDataHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(Response{
 		Success: true,
+		Message: "Geo-tagged network measurements",
 		Data: map[string]interface{}{
 			"points": points,
 			"bounds": map[string]interface{}{
@@ -728,6 +735,7 @@ func (h *Handler) GetDetailedListMetricsHandler(w http.ResponseWriter, r *http.R
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(Response{
 		Success: true,
+		Message: fmt.Sprintf("Detailed list of %s measurements", metric),
 		Data: map[string]interface{}{
 			"labels": labels,
 			"values": values,
