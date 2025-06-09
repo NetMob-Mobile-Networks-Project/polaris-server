@@ -207,16 +207,16 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 		}
 
 		// Validate cellular technology if provided
-		if m.CellularTechnology != nil {
-			validTechs := map[string]bool{
-				"2G": true, "3G": true, "4G": true, "5G": true,
-				"GSM": true, "UMTS": true, "LTE": true, "NR": true,
-			}
-			if !validTechs[*m.CellularTechnology] {
-				writeUploadError(w, http.StatusBadRequest, fmt.Sprintf("Invalid cellular technology in measurement %d: %s", i+1, *m.CellularTechnology), processedCount)
-				return
-			}
-		}
+		// if m.CellularTechnology != nil {
+		// 	validTechs := map[string]bool{
+		// 		"2G": true, "3G": true, "4G": true, "5G": true,
+		// 		"GSM": true, "UMTS": true, "LTE": true, "NR": true,
+		// 	}
+		// 	if !validTechs[*m.CellularTechnology] {
+		// 		writeUploadError(w, http.StatusBadRequest, fmt.Sprintf("Invalid cellular technology in measurement %d: %s", i+1, *m.CellularTechnology), processedCount)
+		// 		return
+		// 	}
+		// }
 
 		// Validate MCCMNC format if provided
 		if m.NetworkOperatorMCCMNC != nil {
