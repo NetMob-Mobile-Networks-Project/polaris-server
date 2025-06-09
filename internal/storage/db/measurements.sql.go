@@ -293,6 +293,65 @@ func (q *Queries) CreateWebTestResult(ctx context.Context, arg CreateWebTestResu
 	)
 }
 
+const getAverageDownloadSpeed = `-- name: GetAverageDownloadSpeed :one
+SELECT CAST(COALESCE(AVG(throughput_kbps), 0) AS DECIMAL(10,2)) as average_speed
+FROM http_test_results
+WHERE timestamp BETWEEN ? AND ?
+AND test_type = 'DOWNLOAD'
+AND success = true
+`
+
+type GetAverageDownloadSpeedParams struct {
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+}
+
+func (q *Queries) GetAverageDownloadSpeed(ctx context.Context, arg GetAverageDownloadSpeedParams) (string, error) {
+	row := q.queryRow(ctx, q.getAverageDownloadSpeedStmt, getAverageDownloadSpeed, arg.FromTimestamp, arg.ToTimestamp)
+	var average_speed string
+	err := row.Scan(&average_speed)
+	return average_speed, err
+}
+
+const getAverageLatency = `-- name: GetAverageLatency :one
+SELECT CAST(COALESCE(AVG(avg_rtt_millis), 0) AS DECIMAL(10,2)) as average_latency
+FROM ping_test_results
+WHERE timestamp BETWEEN ? AND ?
+AND success = true
+`
+
+type GetAverageLatencyParams struct {
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+}
+
+func (q *Queries) GetAverageLatency(ctx context.Context, arg GetAverageLatencyParams) (string, error) {
+	row := q.queryRow(ctx, q.getAverageLatencyStmt, getAverageLatency, arg.FromTimestamp, arg.ToTimestamp)
+	var average_latency string
+	err := row.Scan(&average_latency)
+	return average_latency, err
+}
+
+const getAverageUploadSpeed = `-- name: GetAverageUploadSpeed :one
+SELECT CAST(COALESCE(AVG(throughput_kbps), 0) AS DECIMAL(10,2)) as average_speed
+FROM http_test_results
+WHERE timestamp BETWEEN ? AND ?
+AND test_type = 'UPLOAD'
+AND success = true
+`
+
+type GetAverageUploadSpeedParams struct {
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+}
+
+func (q *Queries) GetAverageUploadSpeed(ctx context.Context, arg GetAverageUploadSpeedParams) (string, error) {
+	row := q.queryRow(ctx, q.getAverageUploadSpeedStmt, getAverageUploadSpeed, arg.FromTimestamp, arg.ToTimestamp)
+	var average_speed string
+	err := row.Scan(&average_speed)
+	return average_speed, err
+}
+
 const getClientConfig = `-- name: GetClientConfig :one
 SELECT id, sampling_interval_seconds, test_types, created_at, updated_at 
 FROM client_config
@@ -312,9 +371,338 @@ func (q *Queries) GetClientConfig(ctx context.Context) (ClientConfig, error) {
 	return i, err
 }
 
+const getDnsSuccessAndTotal = `-- name: GetDnsSuccessAndTotal :one
+SELECT 
+    COUNT(CASE WHEN success = true THEN 1 END) as dns_success,
+    COUNT(*) as dns_total
+FROM dns_test_results
+WHERE timestamp BETWEEN ? AND ?
+`
+
+type GetDnsSuccessAndTotalParams struct {
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+}
+
+type GetDnsSuccessAndTotalRow struct {
+	DnsSuccess int64 `json:"dns_success"`
+	DnsTotal   int64 `json:"dns_total"`
+}
+
+func (q *Queries) GetDnsSuccessAndTotal(ctx context.Context, arg GetDnsSuccessAndTotalParams) (GetDnsSuccessAndTotalRow, error) {
+	row := q.queryRow(ctx, q.getDnsSuccessAndTotalStmt, getDnsSuccessAndTotal, arg.FromTimestamp, arg.ToTimestamp)
+	var i GetDnsSuccessAndTotalRow
+	err := row.Scan(&i.DnsSuccess, &i.DnsTotal)
+	return i, err
+}
+
+const getHttpSuccessAndTotal = `-- name: GetHttpSuccessAndTotal :one
+SELECT 
+    COUNT(CASE WHEN success = true THEN 1 END) as http_success,
+    COUNT(*) as http_total
+FROM http_test_results
+WHERE timestamp BETWEEN ? AND ?
+`
+
+type GetHttpSuccessAndTotalParams struct {
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+}
+
+type GetHttpSuccessAndTotalRow struct {
+	HttpSuccess int64 `json:"http_success"`
+	HttpTotal   int64 `json:"http_total"`
+}
+
+func (q *Queries) GetHttpSuccessAndTotal(ctx context.Context, arg GetHttpSuccessAndTotalParams) (GetHttpSuccessAndTotalRow, error) {
+	row := q.queryRow(ctx, q.getHttpSuccessAndTotalStmt, getHttpSuccessAndTotal, arg.FromTimestamp, arg.ToTimestamp)
+	var i GetHttpSuccessAndTotalRow
+	err := row.Scan(&i.HttpSuccess, &i.HttpTotal)
+	return i, err
+}
+
+const getMapData = `-- name: GetMapData :many
+SELECT 
+    latitude,
+    longitude,
+    timestamp,
+    cellular_technology,
+    network_operator_name,
+    signal_strength,
+    signal_quality,
+    additional_params
+FROM network_measurements
+WHERE 
+    latitude BETWEEN ? AND ?
+    AND longitude BETWEEN ? AND ?
+ORDER BY timestamp DESC
+`
+
+type GetMapDataParams struct {
+	FromLatitude  sql.NullString `json:"from_latitude"`
+	ToLatitude    sql.NullString `json:"to_latitude"`
+	FromLongitude sql.NullString `json:"from_longitude"`
+	ToLongitude   sql.NullString `json:"to_longitude"`
+}
+
+type GetMapDataRow struct {
+	Latitude            sql.NullString  `json:"latitude"`
+	Longitude           sql.NullString  `json:"longitude"`
+	Timestamp           time.Time       `json:"timestamp"`
+	CellularTechnology  sql.NullString  `json:"cellular_technology"`
+	NetworkOperatorName sql.NullString  `json:"network_operator_name"`
+	SignalStrength      sql.NullInt32   `json:"signal_strength"`
+	SignalQuality       sql.NullInt32   `json:"signal_quality"`
+	AdditionalParams    json.RawMessage `json:"additional_params"`
+}
+
+func (q *Queries) GetMapData(ctx context.Context, arg GetMapDataParams) ([]GetMapDataRow, error) {
+	rows, err := q.query(ctx, q.getMapDataStmt, getMapData,
+		arg.FromLatitude,
+		arg.ToLatitude,
+		arg.FromLongitude,
+		arg.ToLongitude,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetMapDataRow{}
+	for rows.Next() {
+		var i GetMapDataRow
+		if err := rows.Scan(
+			&i.Latitude,
+			&i.Longitude,
+			&i.Timestamp,
+			&i.CellularTechnology,
+			&i.NetworkOperatorName,
+			&i.SignalStrength,
+			&i.SignalQuality,
+			&i.AdditionalParams,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getNetworkTechnologyDistribution = `-- name: GetNetworkTechnologyDistribution :many
+SELECT 
+    cellular_technology,
+    CAST(COUNT(cellular_technology) * 100.0 / COUNT(*) AS DECIMAL(10,2)) as percentage
+FROM network_measurements
+WHERE timestamp BETWEEN ? AND ? 
+GROUP BY cellular_technology
+`
+
+type GetNetworkTechnologyDistributionParams struct {
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+}
+
+type GetNetworkTechnologyDistributionRow struct {
+	CellularTechnology sql.NullString `json:"cellular_technology"`
+	Percentage         string         `json:"percentage"`
+}
+
+func (q *Queries) GetNetworkTechnologyDistribution(ctx context.Context, arg GetNetworkTechnologyDistributionParams) ([]GetNetworkTechnologyDistributionRow, error) {
+	rows, err := q.query(ctx, q.getNetworkTechnologyDistributionStmt, getNetworkTechnologyDistribution, arg.FromTimestamp, arg.ToTimestamp)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetNetworkTechnologyDistributionRow{}
+	for rows.Next() {
+		var i GetNetworkTechnologyDistributionRow
+		if err := rows.Scan(&i.CellularTechnology, &i.Percentage); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getPingSuccessAndTotal = `-- name: GetPingSuccessAndTotal :one
+SELECT 
+    COUNT(CASE WHEN success = true THEN 1 END) as ping_success,
+    COUNT(*) as ping_total
+FROM ping_test_results
+WHERE timestamp BETWEEN ? AND ?
+`
+
+type GetPingSuccessAndTotalParams struct {
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+}
+
+type GetPingSuccessAndTotalRow struct {
+	PingSuccess int64 `json:"ping_success"`
+	PingTotal   int64 `json:"ping_total"`
+}
+
+func (q *Queries) GetPingSuccessAndTotal(ctx context.Context, arg GetPingSuccessAndTotalParams) (GetPingSuccessAndTotalRow, error) {
+	row := q.queryRow(ctx, q.getPingSuccessAndTotalStmt, getPingSuccessAndTotal, arg.FromTimestamp, arg.ToTimestamp)
+	var i GetPingSuccessAndTotalRow
+	err := row.Scan(&i.PingSuccess, &i.PingTotal)
+	return i, err
+}
+
+const getSmsSuccessAndTotal = `-- name: GetSmsSuccessAndTotal :one
+SELECT 
+    COUNT(CASE WHEN success = true THEN 1 END) as sms_success,
+    COUNT(*) as sms_total
+FROM sms_test_results
+WHERE timestamp BETWEEN ? AND ?
+`
+
+type GetSmsSuccessAndTotalParams struct {
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+}
+
+type GetSmsSuccessAndTotalRow struct {
+	SmsSuccess int64 `json:"sms_success"`
+	SmsTotal   int64 `json:"sms_total"`
+}
+
+func (q *Queries) GetSmsSuccessAndTotal(ctx context.Context, arg GetSmsSuccessAndTotalParams) (GetSmsSuccessAndTotalRow, error) {
+	row := q.queryRow(ctx, q.getSmsSuccessAndTotalStmt, getSmsSuccessAndTotal, arg.FromTimestamp, arg.ToTimestamp)
+	var i GetSmsSuccessAndTotalRow
+	err := row.Scan(&i.SmsSuccess, &i.SmsTotal)
+	return i, err
+}
+
+const getWebSuccessAndTotal = `-- name: GetWebSuccessAndTotal :one
+SELECT 
+    COUNT(CASE WHEN success = true THEN 1 END) as web_success,
+    COUNT(*) as web_total
+FROM web_test_results
+WHERE timestamp BETWEEN ? AND ?
+`
+
+type GetWebSuccessAndTotalParams struct {
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+}
+
+type GetWebSuccessAndTotalRow struct {
+	WebSuccess int64 `json:"web_success"`
+	WebTotal   int64 `json:"web_total"`
+}
+
+func (q *Queries) GetWebSuccessAndTotal(ctx context.Context, arg GetWebSuccessAndTotalParams) (GetWebSuccessAndTotalRow, error) {
+	row := q.queryRow(ctx, q.getWebSuccessAndTotalStmt, getWebSuccessAndTotal, arg.FromTimestamp, arg.ToTimestamp)
+	var i GetWebSuccessAndTotalRow
+	err := row.Scan(&i.WebSuccess, &i.WebTotal)
+	return i, err
+}
+
+const listDnsMeasurements = `-- name: ListDnsMeasurements :many
+SELECT id, device_id, timestamp, success, error_message, hostname, resolution_time_millis, resolved_ip_addresses, created_at FROM dns_test_results
+ORDER BY id DESC
+LIMIT ? OFFSET ?
+`
+
+type ListDnsMeasurementsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListDnsMeasurements(ctx context.Context, arg ListDnsMeasurementsParams) ([]DnsTestResult, error) {
+	rows, err := q.query(ctx, q.listDnsMeasurementsStmt, listDnsMeasurements, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []DnsTestResult{}
+	for rows.Next() {
+		var i DnsTestResult
+		if err := rows.Scan(
+			&i.ID,
+			&i.DeviceID,
+			&i.Timestamp,
+			&i.Success,
+			&i.ErrorMessage,
+			&i.Hostname,
+			&i.ResolutionTimeMillis,
+			&i.ResolvedIpAddresses,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listHttpMeasurements = `-- name: ListHttpMeasurements :many
+SELECT id, device_id, timestamp, success, error_message, test_type, url, bytes_transferred, duration_millis, throughput_kbps, created_at FROM http_test_results
+ORDER BY id DESC
+LIMIT ? OFFSET ?
+`
+
+type ListHttpMeasurementsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListHttpMeasurements(ctx context.Context, arg ListHttpMeasurementsParams) ([]HttpTestResult, error) {
+	rows, err := q.query(ctx, q.listHttpMeasurementsStmt, listHttpMeasurements, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []HttpTestResult{}
+	for rows.Next() {
+		var i HttpTestResult
+		if err := rows.Scan(
+			&i.ID,
+			&i.DeviceID,
+			&i.Timestamp,
+			&i.Success,
+			&i.ErrorMessage,
+			&i.TestType,
+			&i.Url,
+			&i.BytesTransferred,
+			&i.DurationMillis,
+			&i.ThroughputKbps,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listMeasurements = `-- name: ListMeasurements :many
 SELECT id, device_id, timestamp, latitude, longitude, cellular_technology, network_operator_name, network_operator_mccmnc, lac, rac, tac, cell_id, arfcn, signal_strength, signal_quality, additional_params, created_at FROM network_measurements
-ORDER BY timestamp DESC
+ORDER BY id DESC
 LIMIT ? OFFSET ?
 `
 
@@ -349,6 +737,144 @@ func (q *Queries) ListMeasurements(ctx context.Context, arg ListMeasurementsPara
 			&i.SignalStrength,
 			&i.SignalQuality,
 			&i.AdditionalParams,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPingMeasurements = `-- name: ListPingMeasurements :many
+SELECT id, device_id, timestamp, success, error_message, host, packets_transmitted, packets_received, min_rtt_millis, avg_rtt_millis, max_rtt_millis, ip_address, created_at FROM ping_test_results
+ORDER BY id DESC
+LIMIT ? OFFSET ?
+`
+
+type ListPingMeasurementsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListPingMeasurements(ctx context.Context, arg ListPingMeasurementsParams) ([]PingTestResult, error) {
+	rows, err := q.query(ctx, q.listPingMeasurementsStmt, listPingMeasurements, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []PingTestResult{}
+	for rows.Next() {
+		var i PingTestResult
+		if err := rows.Scan(
+			&i.ID,
+			&i.DeviceID,
+			&i.Timestamp,
+			&i.Success,
+			&i.ErrorMessage,
+			&i.Host,
+			&i.PacketsTransmitted,
+			&i.PacketsReceived,
+			&i.MinRttMillis,
+			&i.AvgRttMillis,
+			&i.MaxRttMillis,
+			&i.IpAddress,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSmsMeasurements = `-- name: ListSmsMeasurements :many
+SELECT id, device_id, timestamp, success, error_message, destination_address, submission_time_millis, delivery_time_millis, duration_millis, created_at FROM sms_test_results
+ORDER BY id DESC
+LIMIT ? OFFSET ?
+`
+
+type ListSmsMeasurementsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListSmsMeasurements(ctx context.Context, arg ListSmsMeasurementsParams) ([]SmsTestResult, error) {
+	rows, err := q.query(ctx, q.listSmsMeasurementsStmt, listSmsMeasurements, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SmsTestResult{}
+	for rows.Next() {
+		var i SmsTestResult
+		if err := rows.Scan(
+			&i.ID,
+			&i.DeviceID,
+			&i.Timestamp,
+			&i.Success,
+			&i.ErrorMessage,
+			&i.DestinationAddress,
+			&i.SubmissionTimeMillis,
+			&i.DeliveryTimeMillis,
+			&i.DurationMillis,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listWebMeasurements = `-- name: ListWebMeasurements :many
+SELECT id, device_id, timestamp, success, error_message, url, loading_time_millis, response_code, page_size_bytes, created_at FROM web_test_results
+ORDER BY id DESC
+LIMIT ? OFFSET ?
+`
+
+type ListWebMeasurementsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListWebMeasurements(ctx context.Context, arg ListWebMeasurementsParams) ([]WebTestResult, error) {
+	rows, err := q.query(ctx, q.listWebMeasurementsStmt, listWebMeasurements, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []WebTestResult{}
+	for rows.Next() {
+		var i WebTestResult
+		if err := rows.Scan(
+			&i.ID,
+			&i.DeviceID,
+			&i.Timestamp,
+			&i.Success,
+			&i.ErrorMessage,
+			&i.Url,
+			&i.LoadingTimeMillis,
+			&i.ResponseCode,
+			&i.PageSizeBytes,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err

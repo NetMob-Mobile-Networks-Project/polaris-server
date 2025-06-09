@@ -22,12 +22,27 @@ type Querier interface {
 	// -- name: GetUserByID :one
 	// SELECT * FROM users WHERE id = ?;
 	DeleteUser(ctx context.Context, id int32) error
+	GetAverageDownloadSpeed(ctx context.Context, arg GetAverageDownloadSpeedParams) (string, error)
+	GetAverageLatency(ctx context.Context, arg GetAverageLatencyParams) (string, error)
+	GetAverageUploadSpeed(ctx context.Context, arg GetAverageUploadSpeedParams) (string, error)
 	GetClientConfig(ctx context.Context) (ClientConfig, error)
+	GetDnsSuccessAndTotal(ctx context.Context, arg GetDnsSuccessAndTotalParams) (GetDnsSuccessAndTotalRow, error)
+	GetHttpSuccessAndTotal(ctx context.Context, arg GetHttpSuccessAndTotalParams) (GetHttpSuccessAndTotalRow, error)
+	GetMapData(ctx context.Context, arg GetMapDataParams) ([]GetMapDataRow, error)
+	GetNetworkTechnologyDistribution(ctx context.Context, arg GetNetworkTechnologyDistributionParams) ([]GetNetworkTechnologyDistributionRow, error)
+	GetPingSuccessAndTotal(ctx context.Context, arg GetPingSuccessAndTotalParams) (GetPingSuccessAndTotalRow, error)
+	GetSmsSuccessAndTotal(ctx context.Context, arg GetSmsSuccessAndTotalParams) (GetSmsSuccessAndTotalRow, error)
 	GetUser(ctx context.Context, id int32) (User, error)
 	GetUserByEmail(ctx context.Context, email string) (User, error)
 	GetUserByID(ctx context.Context, id int32) (User, error)
+	GetWebSuccessAndTotal(ctx context.Context, arg GetWebSuccessAndTotalParams) (GetWebSuccessAndTotalRow, error)
+	ListDnsMeasurements(ctx context.Context, arg ListDnsMeasurementsParams) ([]DnsTestResult, error)
+	ListHttpMeasurements(ctx context.Context, arg ListHttpMeasurementsParams) ([]HttpTestResult, error)
 	ListMeasurements(ctx context.Context, arg ListMeasurementsParams) ([]NetworkMeasurement, error)
+	ListPingMeasurements(ctx context.Context, arg ListPingMeasurementsParams) ([]PingTestResult, error)
+	ListSmsMeasurements(ctx context.Context, arg ListSmsMeasurementsParams) ([]SmsTestResult, error)
 	ListUsers(ctx context.Context, arg ListUsersParams) ([]ListUsersRow, error)
+	ListWebMeasurements(ctx context.Context, arg ListWebMeasurementsParams) ([]WebTestResult, error)
 	UpdateClientConfig(ctx context.Context, arg UpdateClientConfigParams) error
 	UpdateUserExec(ctx context.Context, arg UpdateUserExecParams) error
 }
