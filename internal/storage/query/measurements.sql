@@ -175,14 +175,7 @@ GROUP BY cellular_technology;
 
 -- name: GetMapData :many
 SELECT 
-    latitude,
-    longitude,
-    timestamp,
-    cellular_technology,
-    network_operator_name,
-    signal_strength,
-    signal_quality,
-    additional_params
+    *
 FROM network_measurements
 WHERE 
     latitude BETWEEN ? AND ?

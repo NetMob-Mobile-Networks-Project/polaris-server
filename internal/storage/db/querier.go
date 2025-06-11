@@ -28,7 +28,7 @@ type Querier interface {
 	GetClientConfig(ctx context.Context) (ClientConfig, error)
 	GetDnsSuccessAndTotal(ctx context.Context, arg GetDnsSuccessAndTotalParams) (GetDnsSuccessAndTotalRow, error)
 	GetHttpSuccessAndTotal(ctx context.Context, arg GetHttpSuccessAndTotalParams) (GetHttpSuccessAndTotalRow, error)
-	GetMapData(ctx context.Context, arg GetMapDataParams) ([]GetMapDataRow, error)
+	GetMapData(ctx context.Context, arg GetMapDataParams) ([]NetworkMeasurement, error)
 	GetNetworkTechnologyDistribution(ctx context.Context, arg GetNetworkTechnologyDistributionParams) ([]GetNetworkTechnologyDistributionRow, error)
 	GetPingSuccessAndTotal(ctx context.Context, arg GetPingSuccessAndTotalParams) (GetPingSuccessAndTotalRow, error)
 	GetSmsSuccessAndTotal(ctx context.Context, arg GetSmsSuccessAndTotalParams) (GetSmsSuccessAndTotalRow, error)

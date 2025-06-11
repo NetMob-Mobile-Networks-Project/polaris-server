@@ -423,14 +423,7 @@ func (q *Queries) GetHttpSuccessAndTotal(ctx context.Context, arg GetHttpSuccess
 
 const getMapData = `-- name: GetMapData :many
 SELECT 
-    latitude,
-    longitude,
-    timestamp,
-    cellular_technology,
-    network_operator_name,
-    signal_strength,
-    signal_quality,
-    additional_params
+    id, device_id, timestamp, latitude, longitude, cellular_technology, network_operator_name, network_operator_mccmnc, lac, rac, tac, cell_id, arfcn, signal_strength, signal_quality, additional_params, created_at
 FROM network_measurements
 WHERE 
     latitude BETWEEN ? AND ?
@@ -445,18 +438,7 @@ type GetMapDataParams struct {
 	ToLongitude   sql.NullString `json:"to_longitude"`
 }
 
-type GetMapDataRow struct {
-	Latitude            sql.NullString  `json:"latitude"`
-	Longitude           sql.NullString  `json:"longitude"`
-	Timestamp           time.Time       `json:"timestamp"`
-	CellularTechnology  sql.NullString  `json:"cellular_technology"`
-	NetworkOperatorName sql.NullString  `json:"network_operator_name"`
-	SignalStrength      sql.NullInt32   `json:"signal_strength"`
-	SignalQuality       sql.NullInt32   `json:"signal_quality"`
-	AdditionalParams    json.RawMessage `json:"additional_params"`
-}
-
-func (q *Queries) GetMapData(ctx context.Context, arg GetMapDataParams) ([]GetMapDataRow, error) {
+func (q *Queries) GetMapData(ctx context.Context, arg GetMapDataParams) ([]NetworkMeasurement, error) {
 	rows, err := q.query(ctx, q.getMapDataStmt, getMapData,
 		arg.FromLatitude,
 		arg.ToLatitude,
@@ -467,18 +449,27 @@ func (q *Queries) GetMapData(ctx context.Context, arg GetMapDataParams) ([]GetMa
 		return nil, err
 	}
 	defer rows.Close()
-	items := []GetMapDataRow{}
+	items := []NetworkMeasurement{}
 	for rows.Next() {
-		var i GetMapDataRow
+		var i NetworkMeasurement
 		if err := rows.Scan(
+			&i.ID,
+			&i.DeviceID,
+			&i.Timestamp,
 			&i.Latitude,
 			&i.Longitude,
-			&i.Timestamp,
 			&i.CellularTechnology,
 			&i.NetworkOperatorName,
+			&i.NetworkOperatorMccmnc,
+			&i.Lac,
+			&i.Rac,
+			&i.Tac,
+			&i.CellID,
+			&i.Arfcn,
 			&i.SignalStrength,
 			&i.SignalQuality,
 			&i.AdditionalParams,
+			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}

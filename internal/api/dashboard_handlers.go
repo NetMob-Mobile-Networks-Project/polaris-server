@@ -447,16 +447,22 @@ func (h *Handler) GetMapDataHandler(w http.ResponseWriter, r *http.Request) {
 	var points []map[string]interface{}
 	for _, m := range measurements {
 		point := map[string]interface{}{
-			"latitude":            m.Latitude,
-			"longitude":           m.Longitude,
-			"timestamp":           m.Timestamp,
-			"cellular_technology": m.CellularTechnology,
-			"operator":            m.NetworkOperatorName,
-			"signal_strength":     m.SignalStrength,
-			"signal_quality":      m.SignalQuality,
-		}
-		if m.AdditionalParams != nil {
-			point["additional_params"] = m.AdditionalParams
+			"id":                      m.ID,
+			"device_id":               m.DeviceID,
+			"timestamp":               m.Timestamp,
+			"latitude":                NullStringToString(m.Latitude),
+			"longitude":               NullStringToString(m.Longitude),
+			"cellular_technology":     NullStringToString(m.CellularTechnology),
+			"network_operator_name":   NullStringToString(m.NetworkOperatorName),
+			"network_operator_mccmnc": NullStringToString(m.NetworkOperatorMccmnc),
+			"lac":                     NullInt32ToInt(m.Lac),
+			"rac":                     NullInt32ToInt(m.Rac),
+			"tac":                     NullInt32ToInt(m.Tac),
+			"cell_id":                 NullInt64ToInt(m.CellID),
+			"arfcn":                   NullInt32ToInt(m.Arfcn),
+			"signal_strength":         NullInt32ToInt(m.SignalStrength),
+			"signal_quality":          NullInt32ToInt(m.SignalQuality),
+			"additional_params":       RawMessageToString(m.AdditionalParams),
 		}
 		points = append(points, point)
 	}
@@ -542,19 +548,19 @@ func (h *Handler) GetDetailedListMetricsHandler(w http.ResponseWriter, r *http.R
 			values = append(values, map[string]interface{}{
 				"timestamp":               m.Timestamp,
 				"device_id":               m.DeviceID,
-				"cellular_technology":     m.CellularTechnology,
-				"network_operator_name":   m.NetworkOperatorName,
-				"network_operator_mccmnc": m.NetworkOperatorMccmnc,
-				"lac":                     m.Lac,
-				"rac":                     m.Rac,
-				"tac":                     m.Tac,
-				"cell_id":                 m.CellID,
-				"arfcn":                   m.Arfcn,
-				"signal_strength":         m.SignalStrength,
-				"signal_quality":          m.SignalQuality,
-				"latitude":                m.Latitude,
-				"longitude":               m.Longitude,
-				"additional_params":       m.AdditionalParams,
+				"cellular_technology":     NullStringToString(m.CellularTechnology),
+				"network_operator_name":   NullStringToString(m.NetworkOperatorName),
+				"network_operator_mccmnc": NullStringToString(m.NetworkOperatorMccmnc),
+				"lac":                     NullInt32ToInt(m.Lac),
+				"rac":                     NullInt32ToInt(m.Rac),
+				"tac":                     NullInt32ToInt(m.Tac),
+				"cell_id":                 NullInt64ToInt(m.CellID),
+				"arfcn":                   NullInt32ToInt(m.Arfcn),
+				"signal_strength":         NullInt32ToInt(m.SignalStrength),
+				"signal_quality":          NullInt32ToInt(m.SignalQuality),
+				"latitude":                NullStringToString(m.Latitude),
+				"longitude":               NullStringToString(m.Longitude),
+				"additional_params":       RawMessageToString(m.AdditionalParams),
 			})
 		}
 	} else if metric == "ping" {
@@ -586,14 +592,14 @@ func (h *Handler) GetDetailedListMetricsHandler(w http.ResponseWriter, r *http.R
 				"timestamp":           m.Timestamp,
 				"device_id":           m.DeviceID,
 				"success":             m.Success,
-				"error_message":       m.ErrorMessage,
+				"error_message":       NullStringToString(m.ErrorMessage),
 				"host":                m.Host,
-				"packets_transmitted": m.PacketsTransmitted,
-				"packets_received":    m.PacketsReceived,
-				"min_rtt_millis":      m.MinRttMillis,
-				"avg_rtt_millis":      m.AvgRttMillis,
-				"max_rtt_millis":      m.MaxRttMillis,
-				"ip_address":          m.IpAddress,
+				"packets_transmitted": NullInt32ToInt(m.PacketsTransmitted),
+				"packets_received":    NullInt32ToInt(m.PacketsReceived),
+				"min_rtt_millis":      NullFloat64ToFloat(m.MinRttMillis),
+				"avg_rtt_millis":      NullFloat64ToFloat(m.AvgRttMillis),
+				"max_rtt_millis":      NullFloat64ToFloat(m.MaxRttMillis),
+				"ip_address":          NullStringToString(m.IpAddress),
 			})
 		}
 	} else if metric == "http" {
@@ -623,12 +629,12 @@ func (h *Handler) GetDetailedListMetricsHandler(w http.ResponseWriter, r *http.R
 				"timestamp":         m.Timestamp,
 				"device_id":         m.DeviceID,
 				"success":           m.Success,
-				"error_message":     m.ErrorMessage,
-				"test_type":         m.TestType,
+				"error_message":     NullStringToString(m.ErrorMessage),
+				"test_type":         string(m.TestType),
 				"url":               m.Url,
-				"bytes_transferred": m.BytesTransferred,
-				"duration_millis":   m.DurationMillis,
-				"throughput_kbps":   m.ThroughputKbps,
+				"bytes_transferred": NullInt64ToInt(m.BytesTransferred),
+				"duration_millis":   NullInt64ToInt(m.DurationMillis),
+				"throughput_kbps":   NullStringToString(m.ThroughputKbps),
 			})
 		}
 	} else if metric == "dns" {
@@ -656,10 +662,10 @@ func (h *Handler) GetDetailedListMetricsHandler(w http.ResponseWriter, r *http.R
 				"timestamp":              m.Timestamp,
 				"device_id":              m.DeviceID,
 				"success":                m.Success,
-				"error_message":          m.ErrorMessage,
+				"error_message":          NullStringToString(m.ErrorMessage),
 				"hostname":               m.Hostname,
-				"resolution_time_millis": m.ResolutionTimeMillis,
-				"resolved_ip_addresses":  m.ResolvedIpAddresses,
+				"resolution_time_millis": NullInt64ToInt(m.ResolutionTimeMillis),
+				"resolved_ip_addresses":  RawMessageToString(m.ResolvedIpAddresses),
 			})
 		}
 	} else if metric == "web" {
@@ -688,11 +694,11 @@ func (h *Handler) GetDetailedListMetricsHandler(w http.ResponseWriter, r *http.R
 				"timestamp":           m.Timestamp,
 				"device_id":           m.DeviceID,
 				"success":             m.Success,
-				"error_message":       m.ErrorMessage,
+				"error_message":       NullStringToString(m.ErrorMessage),
 				"url":                 m.Url,
-				"loading_time_millis": m.LoadingTimeMillis,
-				"response_code":       m.ResponseCode,
-				"page_size_bytes":     m.PageSizeBytes,
+				"loading_time_millis": NullInt64ToInt(m.LoadingTimeMillis),
+				"response_code":       NullInt32ToInt(m.ResponseCode),
+				"page_size_bytes":     NullInt64ToInt(m.PageSizeBytes),
 			})
 		}
 	} else if metric == "sms" {
@@ -722,11 +728,11 @@ func (h *Handler) GetDetailedListMetricsHandler(w http.ResponseWriter, r *http.R
 				"timestamp":              m.Timestamp,
 				"device_id":              m.DeviceID,
 				"success":                m.Success,
-				"error_message":          m.ErrorMessage,
+				"error_message":          NullStringToString(m.ErrorMessage),
 				"destination_address":    m.DestinationAddress,
-				"submission_time_millis": m.SubmissionTimeMillis,
-				"delivery_time_millis":   m.DeliveryTimeMillis,
-				"duration_millis":        m.DurationMillis,
+				"submission_time_millis": NullInt64ToInt(m.SubmissionTimeMillis),
+				"delivery_time_millis":   NullInt64ToInt(m.DeliveryTimeMillis),
+				"duration_millis":        NullInt64ToInt(m.DurationMillis),
 				"created_at":             m.CreatedAt,
 			})
 		}
