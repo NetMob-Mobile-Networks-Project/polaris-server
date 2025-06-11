@@ -32,9 +32,19 @@ func main() {
 		config.JWTSecret,
 	)
 
+	// Apply CORS middleware to the main router first
 	router.Use(apiHandler.CORSMiddleware)
 
+	// Register all routes
 	apiHandler.RegisterRoutes(router)
+
+	// Add a catch-all OPTIONS handler for any unmatched routes
+	router.Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+		w.WriteHeader(http.StatusOK)
+	})
 
 	port := config.Port
 
