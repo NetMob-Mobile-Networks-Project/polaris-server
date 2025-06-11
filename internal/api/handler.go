@@ -27,6 +27,7 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 
 	// API version 1 routes
 	apiV1 := router.PathPrefix("/api/v1").Subrouter()
+	apiV1.Use(h.CORSMiddleware) // Apply CORS to API v1 subrouter
 	apiV1.Use(h.RecoverMiddleware)
 
 	// Public routes
@@ -43,6 +44,7 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 
 	// Protected routes (require authentication)
 	protected := apiV1.PathPrefix("").Subrouter()
+	protected.Use(h.CORSMiddleware) // Apply CORS to protected subrouter
 	protected.Use(h.AuthMiddleware)
 
 	// Auth APIs
@@ -64,6 +66,7 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 
 	// Admin routes (protected by admin middleware)
 	admin := protected.PathPrefix("/admin").Subrouter()
+	admin.Use(h.CORSMiddleware) // Apply CORS to admin subrouter
 	admin.Use(h.AdminMiddleware)
 
 	// Admin user management routes
