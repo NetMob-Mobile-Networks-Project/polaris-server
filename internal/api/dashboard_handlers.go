@@ -486,6 +486,21 @@ func (h *Handler) GetMapDataHandler(w http.ResponseWriter, r *http.Request) {
 // GET /api/v1/metrics/detailed-list
 // Description: Get detailed list of network measurements
 func (h *Handler) GetDetailedListMetricsHandler(w http.ResponseWriter, r *http.Request) {
+	// startQuery := r.URL.Query().Get("start")
+
+	// start := time.Now()
+	// end := time.Now()
+
+	// if startQuery == "last-hour" {
+	// 	start = time.Now().Add(-1 * time.Hour)
+	// } else if startQuery == "last-day" {
+	// 	start = time.Now().Add(-24 * time.Hour)
+	// } else if startQuery == "last-week" {
+	// 	start = time.Now().Add(-7 * 24 * time.Hour)
+	// } else if startQuery == "last-month" {
+	// 	start = time.Now().Add(-30 * 24 * time.Hour)
+	// }
+
 	page := r.URL.Query().Get("page")
 	limit := int32(30)
 
