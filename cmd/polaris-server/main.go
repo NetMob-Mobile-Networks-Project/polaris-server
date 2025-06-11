@@ -27,24 +27,24 @@ func main() {
 
 	router := mux.NewRouter()
 
-	router.Use(func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set("Access-Control-Allow-Origin", "*")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-			w.Header().Set("Access-Control-Allow-Headers", "*")
-			if r.Method == "OPTIONS" {
-				w.WriteHeader(http.StatusOK)
-				return
-			}
-			next.ServeHTTP(w, r)
-		})
-	})
-
 	apiHandler := api.NewHandler(
 		db,
 		config.JWTSecret,
 	)
+
+	// Apply CORS middleware to the main router first
+	router.Use(apiHandler.CORSMiddleware)
+
+	// Register all routes
 	apiHandler.RegisterRoutes(router)
+
+	// Add a catch-all OPTIONS handler for any unmatched routes
+	router.Methods("OPTIONS").HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+		w.WriteHeader(http.StatusOK)
+	})
 
 	port := config.Port
 

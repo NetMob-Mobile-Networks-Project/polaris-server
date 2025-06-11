@@ -103,3 +103,27 @@ func (h *Handler) AdminMiddleware(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+// CORSMiddleware handles CORS headers - allows everything
+func (h *Handler) CORSMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Allow all origins
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		// Allow all methods
+		w.Header().Set("Access-Control-Allow-Methods", "*")
+		// Allow all headers
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+		// Allow credentials (though not needed with wildcard origin)
+		w.Header().Set("Access-Control-Allow-Credentials", "false")
+		// Set max age for preflight cache
+		w.Header().Set("Access-Control-Max-Age", "3600")
+
+		// Handle preflight OPTIONS request
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}
