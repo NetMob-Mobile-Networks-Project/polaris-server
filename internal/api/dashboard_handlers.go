@@ -241,8 +241,8 @@ func (h *Handler) GetNetworkHistogramHandler(w http.ResponseWriter, r *http.Requ
 			start.Add(60 * time.Minute),
 		}
 
-		for _, time := range times {
-			labels = append(labels, time.Format("15:04"))
+		for _, _time := range times {
+			labels = append(labels, _time.Add(3*time.Hour+30*time.Minute).Format("15:04"))
 		}
 
 	} else if startQuery == "last-day" {
@@ -256,8 +256,8 @@ func (h *Handler) GetNetworkHistogramHandler(w http.ResponseWriter, r *http.Requ
 			start.Add(24 * time.Hour),
 		}
 
-		for _, time := range times {
-			labels = append(labels, time.Format("15:04"))
+		for _, _time := range times {
+			labels = append(labels, _time.Add(3*time.Hour+30*time.Minute).Format("15:04"))
 		}
 	} else if startQuery == "last-week" {
 		start = time.Now().Add(-6 * 24 * time.Hour)
@@ -270,8 +270,8 @@ func (h *Handler) GetNetworkHistogramHandler(w http.ResponseWriter, r *http.Requ
 			start.Add(6 * 24 * time.Hour),
 		}
 
-		for _, time := range times {
-			labels = append(labels, time.Format("Mon"))
+		for _, _time := range times {
+			labels = append(labels, _time.Add(3*time.Hour+30*time.Minute).Format("Mon"))
 		}
 	} else if startQuery == "last-month" {
 		start = time.Now().Add(-30 * 24 * time.Hour)
@@ -284,8 +284,8 @@ func (h *Handler) GetNetworkHistogramHandler(w http.ResponseWriter, r *http.Requ
 			start.Add(30 * 24 * time.Hour),
 		}
 
-		for _, time := range times {
-			labels = append(labels, time.Format("Jan 02"))
+		for _, _time := range times {
+			labels = append(labels, _time.Add(3*time.Hour+30*time.Minute).Format("Jan 02"))
 		}
 	}
 
