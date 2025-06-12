@@ -601,7 +601,7 @@ func (q *Queries) GetWebSuccessAndTotal(ctx context.Context, arg GetWebSuccessAn
 }
 
 const listDnsMeasurements = `-- name: ListDnsMeasurements :many
-SELECT id, device_id, timestamp, success, error_message, hostname, resolution_time_millis, COALESCE(resolved_ip_addresses, '[]'), created_at
+SELECT id, device_id, timestamp, success, error_message, hostname, resolution_time_millis, COALESCE(resolved_ip_addresses, '[]') as resolved_ip_addresses, created_at
 FROM dns_test_results
 ORDER BY id DESC
 LIMIT ? OFFSET ?
