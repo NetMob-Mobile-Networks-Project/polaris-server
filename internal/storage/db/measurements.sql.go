@@ -602,17 +602,25 @@ func (q *Queries) GetWebSuccessAndTotal(ctx context.Context, arg GetWebSuccessAn
 
 const listDnsMeasurements = `-- name: ListDnsMeasurements :many
 SELECT id, device_id, timestamp, success, error_message, hostname, resolution_time_millis, resolved_ip_addresses, created_at FROM dns_test_results
-ORDER BY id DESC
+WHERE timestamp BETWEEN ? AND ?
+ORDER BY timestamp DESC
 LIMIT ? OFFSET ?
 `
 
 type ListDnsMeasurementsParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+	Limit         int32     `json:"limit"`
+	Offset        int32     `json:"offset"`
 }
 
 func (q *Queries) ListDnsMeasurements(ctx context.Context, arg ListDnsMeasurementsParams) ([]DnsTestResult, error) {
-	rows, err := q.query(ctx, q.listDnsMeasurementsStmt, listDnsMeasurements, arg.Limit, arg.Offset)
+	rows, err := q.query(ctx, q.listDnsMeasurementsStmt, listDnsMeasurements,
+		arg.FromTimestamp,
+		arg.ToTimestamp,
+		arg.Limit,
+		arg.Offset,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -646,17 +654,25 @@ func (q *Queries) ListDnsMeasurements(ctx context.Context, arg ListDnsMeasuremen
 
 const listHttpMeasurements = `-- name: ListHttpMeasurements :many
 SELECT id, device_id, timestamp, success, error_message, test_type, url, bytes_transferred, duration_millis, throughput_kbps, created_at FROM http_test_results
-ORDER BY id DESC
+WHERE timestamp BETWEEN ? AND ?
+ORDER BY timestamp DESC
 LIMIT ? OFFSET ?
 `
 
 type ListHttpMeasurementsParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+	Limit         int32     `json:"limit"`
+	Offset        int32     `json:"offset"`
 }
 
 func (q *Queries) ListHttpMeasurements(ctx context.Context, arg ListHttpMeasurementsParams) ([]HttpTestResult, error) {
-	rows, err := q.query(ctx, q.listHttpMeasurementsStmt, listHttpMeasurements, arg.Limit, arg.Offset)
+	rows, err := q.query(ctx, q.listHttpMeasurementsStmt, listHttpMeasurements,
+		arg.FromTimestamp,
+		arg.ToTimestamp,
+		arg.Limit,
+		arg.Offset,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -692,17 +708,25 @@ func (q *Queries) ListHttpMeasurements(ctx context.Context, arg ListHttpMeasurem
 
 const listMeasurements = `-- name: ListMeasurements :many
 SELECT id, device_id, timestamp, latitude, longitude, cellular_technology, network_operator_name, network_operator_mccmnc, lac, rac, tac, cell_id, arfcn, signal_strength, signal_quality, additional_params, created_at FROM network_measurements
-ORDER BY id DESC
+WHERE timestamp BETWEEN ? AND ?
+ORDER BY timestamp DESC
 LIMIT ? OFFSET ?
 `
 
 type ListMeasurementsParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+	Limit         int32     `json:"limit"`
+	Offset        int32     `json:"offset"`
 }
 
 func (q *Queries) ListMeasurements(ctx context.Context, arg ListMeasurementsParams) ([]NetworkMeasurement, error) {
-	rows, err := q.query(ctx, q.listMeasurementsStmt, listMeasurements, arg.Limit, arg.Offset)
+	rows, err := q.query(ctx, q.listMeasurementsStmt, listMeasurements,
+		arg.FromTimestamp,
+		arg.ToTimestamp,
+		arg.Limit,
+		arg.Offset,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -744,17 +768,25 @@ func (q *Queries) ListMeasurements(ctx context.Context, arg ListMeasurementsPara
 
 const listPingMeasurements = `-- name: ListPingMeasurements :many
 SELECT id, device_id, timestamp, success, error_message, host, packets_transmitted, packets_received, min_rtt_millis, avg_rtt_millis, max_rtt_millis, ip_address, created_at FROM ping_test_results
-ORDER BY id DESC
+WHERE timestamp BETWEEN ? AND ?
+ORDER BY timestamp DESC
 LIMIT ? OFFSET ?
 `
 
 type ListPingMeasurementsParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+	Limit         int32     `json:"limit"`
+	Offset        int32     `json:"offset"`
 }
 
 func (q *Queries) ListPingMeasurements(ctx context.Context, arg ListPingMeasurementsParams) ([]PingTestResult, error) {
-	rows, err := q.query(ctx, q.listPingMeasurementsStmt, listPingMeasurements, arg.Limit, arg.Offset)
+	rows, err := q.query(ctx, q.listPingMeasurementsStmt, listPingMeasurements,
+		arg.FromTimestamp,
+		arg.ToTimestamp,
+		arg.Limit,
+		arg.Offset,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -792,17 +824,25 @@ func (q *Queries) ListPingMeasurements(ctx context.Context, arg ListPingMeasurem
 
 const listSmsMeasurements = `-- name: ListSmsMeasurements :many
 SELECT id, device_id, timestamp, success, error_message, destination_address, submission_time_millis, delivery_time_millis, duration_millis, created_at FROM sms_test_results
-ORDER BY id DESC
+WHERE timestamp BETWEEN ? AND ?
+ORDER BY timestamp DESC
 LIMIT ? OFFSET ?
 `
 
 type ListSmsMeasurementsParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+	Limit         int32     `json:"limit"`
+	Offset        int32     `json:"offset"`
 }
 
 func (q *Queries) ListSmsMeasurements(ctx context.Context, arg ListSmsMeasurementsParams) ([]SmsTestResult, error) {
-	rows, err := q.query(ctx, q.listSmsMeasurementsStmt, listSmsMeasurements, arg.Limit, arg.Offset)
+	rows, err := q.query(ctx, q.listSmsMeasurementsStmt, listSmsMeasurements,
+		arg.FromTimestamp,
+		arg.ToTimestamp,
+		arg.Limit,
+		arg.Offset,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -837,17 +877,25 @@ func (q *Queries) ListSmsMeasurements(ctx context.Context, arg ListSmsMeasuremen
 
 const listWebMeasurements = `-- name: ListWebMeasurements :many
 SELECT id, device_id, timestamp, success, error_message, url, loading_time_millis, response_code, page_size_bytes, created_at FROM web_test_results
-ORDER BY id DESC
+WHERE timestamp BETWEEN ? AND ?
+ORDER BY timestamp DESC
 LIMIT ? OFFSET ?
 `
 
 type ListWebMeasurementsParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
+	FromTimestamp time.Time `json:"from_timestamp"`
+	ToTimestamp   time.Time `json:"to_timestamp"`
+	Limit         int32     `json:"limit"`
+	Offset        int32     `json:"offset"`
 }
 
 func (q *Queries) ListWebMeasurements(ctx context.Context, arg ListWebMeasurementsParams) ([]WebTestResult, error) {
-	rows, err := q.query(ctx, q.listWebMeasurementsStmt, listWebMeasurements, arg.Limit, arg.Offset)
+	rows, err := q.query(ctx, q.listWebMeasurementsStmt, listWebMeasurements,
+		arg.FromTimestamp,
+		arg.ToTimestamp,
+		arg.Limit,
+		arg.Offset,
+	)
 	if err != nil {
 		return nil, err
 	}

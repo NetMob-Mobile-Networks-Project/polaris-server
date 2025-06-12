@@ -183,30 +183,36 @@ ORDER BY timestamp DESC;
 
 -- name: ListMeasurements :many
 SELECT * FROM network_measurements
-ORDER BY id DESC
+WHERE timestamp BETWEEN ? AND ?
+ORDER BY timestamp DESC
 LIMIT ? OFFSET ?;
 
 -- name: ListPingMeasurements :many
 SELECT * FROM ping_test_results
-ORDER BY id DESC
+WHERE timestamp BETWEEN ? AND ?
+ORDER BY timestamp DESC
 LIMIT ? OFFSET ?;
 
 -- name: ListHttpMeasurements :many
 SELECT * FROM http_test_results
-ORDER BY id DESC
+WHERE timestamp BETWEEN ? AND ?
+ORDER BY timestamp DESC
 LIMIT ? OFFSET ?;
 
 -- name: ListDnsMeasurements :many
 SELECT * FROM dns_test_results
-ORDER BY id DESC
+WHERE timestamp BETWEEN ? AND ?
+ORDER BY timestamp DESC
 LIMIT ? OFFSET ?;
 
 -- name: ListWebMeasurements :many
 SELECT * FROM web_test_results
-ORDER BY id DESC
+WHERE timestamp BETWEEN ? AND ?
+ORDER BY timestamp DESC
 LIMIT ? OFFSET ?;
 
 -- name: ListSmsMeasurements :many
 SELECT * FROM sms_test_results
-ORDER BY id DESC
+WHERE timestamp BETWEEN ? AND ?
+ORDER BY timestamp DESC
 LIMIT ? OFFSET ?;
