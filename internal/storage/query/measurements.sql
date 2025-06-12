@@ -202,7 +202,8 @@ LIMIT ? OFFSET ?;
 -- name: ListDnsMeasurements :many
 SELECT id, device_id, timestamp, success, error_message, hostname, resolution_time_millis, COALESCE(resolved_ip_addresses, '[]') as resolved_ip_addresses, created_at
 FROM dns_test_results
-ORDER BY id DESC
+WHERE timestamp BETWEEN ? AND ?
+ORDER BY timestamp DESC
 LIMIT ? OFFSET ?;
 
 -- name: ListWebMeasurements :many
