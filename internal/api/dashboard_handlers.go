@@ -495,20 +495,20 @@ func (h *Handler) GetMapDataHandler(w http.ResponseWriter, r *http.Request) {
 // GET /api/v1/metrics/detailed-list
 // Description: Get detailed list of network measurements
 func (h *Handler) GetDetailedListMetricsHandler(w http.ResponseWriter, r *http.Request) {
-	// startQuery := r.URL.Query().Get("start")
+	startQuery := r.URL.Query().Get("start")
 
-	// start := time.Now()
-	// end := time.Now()
+	start := time.Now()
+	end := time.Now()
 
-	// if startQuery == "last-hour" {
-	// 	start = time.Now().Add(-1 * time.Hour)
-	// } else if startQuery == "last-day" {
-	// 	start = time.Now().Add(-24 * time.Hour)
-	// } else if startQuery == "last-week" {
-	// 	start = time.Now().Add(-7 * 24 * time.Hour)
-	// } else if startQuery == "last-month" {
-	// 	start = time.Now().Add(-30 * 24 * time.Hour)
-	// }
+	if startQuery == "last-hour" {
+		start = time.Now().Add(-1 * time.Hour)
+	} else if startQuery == "last-day" {
+		start = time.Now().Add(-24 * time.Hour)
+	} else if startQuery == "last-week" {
+		start = time.Now().Add(-7 * 24 * time.Hour)
+	} else if startQuery == "last-month" {
+		start = time.Now().Add(-30 * 24 * time.Hour)
+	}
 
 	page := r.URL.Query().Get("page")
 	limit := int32(30)
@@ -542,8 +542,10 @@ func (h *Handler) GetDetailedListMetricsHandler(w http.ResponseWriter, r *http.R
 
 	if metric == "network" {
 		list, err := h.db.ListMeasurements(r.Context(), db.ListMeasurementsParams{
-			Limit:  limit,
-			Offset: (pageNum - 1) * limit,
+			Limit:         limit,
+			Offset:        (pageNum - 1) * limit,
+			FromTimestamp: start,
+			ToTimestamp:   end,
 		})
 		if err != nil {
 			writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get detailed list of network measurements: %v", err))
@@ -589,8 +591,10 @@ func (h *Handler) GetDetailedListMetricsHandler(w http.ResponseWriter, r *http.R
 		}
 	} else if metric == "ping" {
 		list, err := h.db.ListPingMeasurements(r.Context(), db.ListPingMeasurementsParams{
-			Limit:  limit,
-			Offset: (pageNum - 1) * limit,
+			Limit:         limit,
+			Offset:        (pageNum - 1) * limit,
+			FromTimestamp: start,
+			ToTimestamp:   end,
 		})
 		if err != nil {
 			writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get detailed list of network measurements: %v", err))
@@ -628,8 +632,10 @@ func (h *Handler) GetDetailedListMetricsHandler(w http.ResponseWriter, r *http.R
 		}
 	} else if metric == "http" {
 		list, err := h.db.ListHttpMeasurements(r.Context(), db.ListHttpMeasurementsParams{
-			Limit:  limit,
-			Offset: (pageNum - 1) * limit,
+			Limit:         limit,
+			Offset:        (pageNum - 1) * limit,
+			FromTimestamp: start,
+			ToTimestamp:   end,
 		})
 		if err != nil {
 			writeJSONError(w, http.StatusInternalServerError, "Failed to get detailed list of network measurements")
@@ -663,8 +669,10 @@ func (h *Handler) GetDetailedListMetricsHandler(w http.ResponseWriter, r *http.R
 		}
 	} else if metric == "dns" {
 		list, err := h.db.ListDnsMeasurements(r.Context(), db.ListDnsMeasurementsParams{
-			Limit:  limit,
-			Offset: (pageNum - 1) * limit,
+			Limit:         limit,
+			Offset:        (pageNum - 1) * limit,
+			FromTimestamp: start,
+			ToTimestamp:   end,
 		})
 		if err != nil {
 			writeJSONError(w, http.StatusInternalServerError, "Failed to get detailed list of network measurements")
@@ -694,8 +702,10 @@ func (h *Handler) GetDetailedListMetricsHandler(w http.ResponseWriter, r *http.R
 		}
 	} else if metric == "web" {
 		list, err := h.db.ListWebMeasurements(r.Context(), db.ListWebMeasurementsParams{
-			Limit:  limit,
-			Offset: (pageNum - 1) * limit,
+			Limit:         limit,
+			Offset:        (pageNum - 1) * limit,
+			FromTimestamp: start,
+			ToTimestamp:   end,
 		})
 		if err != nil {
 			writeJSONError(w, http.StatusInternalServerError, "Failed to get detailed list of network measurements")
@@ -727,8 +737,10 @@ func (h *Handler) GetDetailedListMetricsHandler(w http.ResponseWriter, r *http.R
 		}
 	} else if metric == "sms" {
 		list, err := h.db.ListSmsMeasurements(r.Context(), db.ListSmsMeasurementsParams{
-			Limit:  limit,
-			Offset: (pageNum - 1) * limit,
+			Limit:         limit,
+			Offset:        (pageNum - 1) * limit,
+			FromTimestamp: start,
+			ToTimestamp:   end,
 		})
 		if err != nil {
 			writeJSONError(w, http.StatusInternalServerError, "Failed to get detailed list of network measurements")
