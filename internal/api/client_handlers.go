@@ -185,50 +185,24 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 	processedCount := 0
 
 	// Process each measurement
-	for i, m := range req.Measurements {
+	for _, m := range req.Measurements {
 		// Validate timestamp
 		if m.Timestamp <= 0 {
-			writeUploadError(w, http.StatusBadRequest, fmt.Sprintf("Invalid timestamp in measurement %d", i+1), processedCount)
+			writeUploadError(w, http.StatusBadRequest, fmt.Sprintf("Invalid timestamp in measurement %d", processedCount+1), processedCount)
 			return
 		}
 
 		// Validate coordinates if provided
 		if m.Latitude != nil {
 			if *m.Latitude < -90 || *m.Latitude > 90 {
-				writeUploadError(w, http.StatusBadRequest, fmt.Sprintf("Invalid latitude in measurement %d: must be between -90 and 90", i+1), processedCount)
-				return
+				continue
 			}
 		}
 		if m.Longitude != nil {
 			if *m.Longitude < -180 || *m.Longitude > 180 {
-				writeUploadError(w, http.StatusBadRequest, fmt.Sprintf("Invalid longitude in measurement %d: must be between -180 and 180", i+1), processedCount)
-				return
+				continue
 			}
 		}
-
-		// Validate cellular technology if provided
-		// if m.CellularTechnology != nil {
-		// 	validTechs := map[string]bool{
-		// 		"2G": true, "3G": true, "4G": true, "5G": true,
-		// 		"GSM": true, "UMTS": true, "LTE": true, "NR": true,
-		// 	}
-		// 	if !validTechs[*m.CellularTechnology] {
-		// 		writeUploadError(w, http.StatusBadRequest, fmt.Sprintf("Invalid cellular technology in measurement %d: %s", i+1, *m.CellularTechnology), processedCount)
-		// 		return
-		// 	}
-		// }
-
-		// // Validate MCCMNC format if provided
-		// if m.NetworkOperatorMCCMNC != nil {
-		// 	if len(*m.NetworkOperatorMCCMNC) < 5 || len(*m.NetworkOperatorMCCMNC) > 6 {
-		// 		writeUploadError(w, http.StatusBadRequest, fmt.Sprintf("Invalid MCCMNC format in measurement %d: must be 5-6 digits", i+1), processedCount)
-		// 		return
-		// 	}
-		// 	if _, err := strconv.Atoi(*m.NetworkOperatorMCCMNC); err != nil {
-		// 		writeUploadError(w, http.StatusBadRequest, fmt.Sprintf("Invalid MCCMNC format in measurement %d: must contain only digits", i+1), processedCount)
-		// 		return
-		// 	}
-		// }
 
 		// // Validate signal strength if provided
 		// if m.SignalStrength != nil {
@@ -246,33 +220,9 @@ func (h *Handler) UploadNetworkMeasurementsHandler(w http.ResponseWriter, r *htt
 		// 	}
 		// }
 
-		// // Validate ARFCN if provided
-		// if m.ARFCN != nil {
-		// 	if *m.ARFCN < 0 || *m.ARFCN > 32767 {
-		// 		writeUploadError(w, http.StatusBadRequest, fmt.Sprintf("Invalid ARFCN in measurement %d: must be between 0 and 32767", i+1), processedCount)
-		// 		return
-		// 	}
-		// }
-
-		// // Validate LAC, RAC, TAC if provided
-		// if m.LAC != nil && *m.LAC < 0 {
-		// 	writeUploadError(w, http.StatusBadRequest, fmt.Sprintf("Invalid LAC in measurement %d: must be positive", i+1), processedCount)
-		// 	return
-		// }
-		// if m.RAC != nil && *m.RAC < 0 {
-		// 	writeUploadError(w, http.StatusBadRequest, fmt.Sprintf("Invalid RAC in measurement %d: must be positive", i+1), processedCount)
-		// 	return
-		// }
-		// if m.TAC != nil && *m.TAC < 0 {
-		// 	writeUploadError(w, http.StatusBadRequest, fmt.Sprintf("Invalid TAC in measurement %d: must be positive", i+1), processedCount)
-		// 	return
-		// }
-
-		// // Validate Cell ID if provided
-		// if m.CellID != nil && *m.CellID < 0 {
-		// 	writeUploadError(w, http.StatusBadRequest, fmt.Sprintf("Invalid Cell ID in measurement %d: must be positive", i+1), processedCount)
-		// 	return
-		// }
+		if m.Latitude == nil || m.Longitude == nil {
+			continue
+		}
 
 		additionalParamsJSON, _ := json.Marshal(m.AdditionalParams)
 		params := db.CreateNetworkMeasurementParams{
