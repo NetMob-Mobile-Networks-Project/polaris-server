@@ -675,7 +675,7 @@ func (h *Handler) GetDetailedListMetricsHandler(w http.ResponseWriter, r *http.R
 			ToTimestamp:   end,
 		})
 		if err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "Failed to get detailed list of network measurements")
+			writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get detailed list of network measurements: %v", err))
 			return
 		}
 
