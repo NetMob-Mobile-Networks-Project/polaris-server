@@ -601,26 +601,19 @@ func (q *Queries) GetWebSuccessAndTotal(ctx context.Context, arg GetWebSuccessAn
 }
 
 const listDnsMeasurements = `-- name: ListDnsMeasurements :many
-SELECT id, device_id, timestamp, success, error_message, hostname, resolution_time_millis, resolved_ip_addresses, created_at FROM dns_test_results
-WHERE timestamp BETWEEN ? AND ?
-ORDER BY timestamp DESC
+SELECT id, device_id, timestamp, success, error_message, hostname, resolution_time_millis, COALESCE(resolved_ip_addresses, '[]') as resolved_ip_addresses, created_at
+FROM dns_test_results
+ORDER BY id DESC
 LIMIT ? OFFSET ?
 `
 
 type ListDnsMeasurementsParams struct {
-	FromTimestamp time.Time `json:"from_timestamp"`
-	ToTimestamp   time.Time `json:"to_timestamp"`
-	Limit         int32     `json:"limit"`
-	Offset        int32     `json:"offset"`
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
 }
 
 func (q *Queries) ListDnsMeasurements(ctx context.Context, arg ListDnsMeasurementsParams) ([]DnsTestResult, error) {
-	rows, err := q.query(ctx, q.listDnsMeasurementsStmt, listDnsMeasurements,
-		arg.FromTimestamp,
-		arg.ToTimestamp,
-		arg.Limit,
-		arg.Offset,
-	)
+	rows, err := q.query(ctx, q.listDnsMeasurementsStmt, listDnsMeasurements, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

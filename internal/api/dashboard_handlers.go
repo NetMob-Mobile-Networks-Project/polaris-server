@@ -669,13 +669,11 @@ func (h *Handler) GetDetailedListMetricsHandler(w http.ResponseWriter, r *http.R
 		}
 	} else if metric == "dns" {
 		list, err := h.db.ListDnsMeasurements(r.Context(), db.ListDnsMeasurementsParams{
-			Limit:         limit,
-			Offset:        (pageNum - 1) * limit,
-			FromTimestamp: start,
-			ToTimestamp:   end,
+			Limit:  limit,
+			Offset: (pageNum - 1) * limit,
 		})
 		if err != nil {
-			writeJSONError(w, http.StatusInternalServerError, "Failed to get detailed list of network measurements")
+			writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get detailed list of network measurements: %v", err))
 			return
 		}
 
