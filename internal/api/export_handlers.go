@@ -14,76 +14,292 @@ import (
 // GET /api/export/csv
 // Description: Export all telemetry data as CSV
 func (h *Handler) ExportCSVHandler(w http.ResponseWriter, r *http.Request) {
+	metric := r.URL.Query().Get("metric")
+
+	var allMetrics map[string]bool = map[string]bool{
+		"network": true,
+		"ping":    true,
+		"http":    true,
+		"dns":     true,
+		"web":     true,
+		"sms":     true,
+	}
+
+	if !allMetrics[metric] {
+		writeJSONError(w, http.StatusBadRequest, "Invalid metric")
+		return
+	}
+
+	var labels []string
+	var values []map[string]interface{}
+
+	// Get all data without pagination
+	limit := int32(1000000) // Large number to get all records
+	pageNum := int32(1)
+
+	if metric == "network" {
+		list, err := h.db.ListMeasurements(r.Context(), db.ListMeasurementsParams{
+			Limit:         limit,
+			Offset:        (pageNum - 1) * limit,
+			FromTimestamp: time.Time{}, // Get all time
+			ToTimestamp:   time.Now(),
+		})
+		if err != nil {
+			writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to export network measurements: %v", err))
+			return
+		}
+
+		labels = []string{
+			"timestamp",
+			"device_id",
+			"cellular_technology",
+			"network_operator_name",
+			"network_operator_mccmnc",
+			"lac",
+			"rac",
+			"tac",
+			"cell_id",
+			"arfcn",
+			"signal_strength",
+			"signal_quality",
+			"latitude",
+			"longitude",
+			"additional_params",
+		}
+
+		for _, m := range list {
+			values = append(values, map[string]interface{}{
+				"timestamp":               m.Timestamp,
+				"device_id":               m.DeviceID,
+				"cellular_technology":     NullStringToString(m.CellularTechnology),
+				"network_operator_name":   NullStringToString(m.NetworkOperatorName),
+				"network_operator_mccmnc": NullStringToString(m.NetworkOperatorMccmnc),
+				"lac":                     NullInt32ToInt(m.Lac),
+				"rac":                     NullInt32ToInt(m.Rac),
+				"tac":                     NullInt32ToInt(m.Tac),
+				"cell_id":                 NullInt64ToInt(m.CellID),
+				"arfcn":                   NullInt32ToInt(m.Arfcn),
+				"signal_strength":         NullInt32ToInt(m.SignalStrength),
+				"signal_quality":          NullInt32ToInt(m.SignalQuality),
+				"latitude":                NullStringToString(m.Latitude),
+				"longitude":               NullStringToString(m.Longitude),
+				"additional_params":       RawMessageToString(m.AdditionalParams),
+			})
+		}
+	} else if metric == "ping" {
+		list, err := h.db.ListPingMeasurements(r.Context(), db.ListPingMeasurementsParams{
+			Limit:         limit,
+			Offset:        (pageNum - 1) * limit,
+			FromTimestamp: time.Time{}, // Get all time
+			ToTimestamp:   time.Now(),
+		})
+		if err != nil {
+			writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to export ping measurements: %v", err))
+			return
+		}
+
+		labels = []string{
+			"timestamp",
+			"device_id",
+			"success",
+			"error_message",
+			"host",
+			"packets_transmitted",
+			"packets_received",
+			"min_rtt_millis",
+			"avg_rtt_millis",
+			"max_rtt_millis",
+			"ip_address",
+		}
+
+		for _, m := range list {
+			values = append(values, map[string]interface{}{
+				"timestamp":           m.Timestamp,
+				"device_id":           m.DeviceID,
+				"success":             m.Success,
+				"error_message":       NullStringToString(m.ErrorMessage),
+				"host":                m.Host,
+				"packets_transmitted": NullInt32ToInt(m.PacketsTransmitted),
+				"packets_received":    NullInt32ToInt(m.PacketsReceived),
+				"min_rtt_millis":      NullFloat64ToFloat(m.MinRttMillis),
+				"avg_rtt_millis":      NullFloat64ToFloat(m.AvgRttMillis),
+				"max_rtt_millis":      NullFloat64ToFloat(m.MaxRttMillis),
+				"ip_address":          NullStringToString(m.IpAddress),
+			})
+		}
+	} else if metric == "http" {
+		list, err := h.db.ListHttpMeasurements(r.Context(), db.ListHttpMeasurementsParams{
+			Limit:         limit,
+			Offset:        (pageNum - 1) * limit,
+			FromTimestamp: time.Time{}, // Get all time
+			ToTimestamp:   time.Now(),
+		})
+		if err != nil {
+			writeJSONError(w, http.StatusInternalServerError, "Failed to export http measurements")
+			return
+		}
+
+		labels = []string{
+			"timestamp",
+			"device_id",
+			"success",
+			"error_message",
+			"test_type",
+			"url",
+			"bytes_transferred",
+			"duration_millis",
+			"throughput_kbps",
+		}
+
+		for _, m := range list {
+			values = append(values, map[string]interface{}{
+				"timestamp":         m.Timestamp,
+				"device_id":         m.DeviceID,
+				"success":           m.Success,
+				"error_message":     NullStringToString(m.ErrorMessage),
+				"test_type":         string(m.TestType),
+				"url":               m.Url,
+				"bytes_transferred": NullInt64ToInt(m.BytesTransferred),
+				"duration_millis":   NullInt64ToInt(m.DurationMillis),
+				"throughput_kbps":   NullStringToString(m.ThroughputKbps),
+			})
+		}
+	} else if metric == "dns" {
+		list, err := h.db.ListDnsMeasurements(r.Context(), db.ListDnsMeasurementsParams{
+			Limit:         limit,
+			Offset:        (pageNum - 1) * limit,
+			FromTimestamp: time.Time{}, // Get all time
+			ToTimestamp:   time.Now(),
+		})
+		if err != nil {
+			writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to export dns measurements: %v", err))
+			return
+		}
+
+		labels = []string{
+			"timestamp",
+			"device_id",
+			"success",
+			"error_message",
+			"hostname",
+			"resolution_time_millis",
+			"resolved_ip_addresses",
+		}
+
+		for _, m := range list {
+			values = append(values, map[string]interface{}{
+				"timestamp":              m.Timestamp,
+				"device_id":              m.DeviceID,
+				"success":                m.Success,
+				"error_message":          NullStringToString(m.ErrorMessage),
+				"hostname":               m.Hostname,
+				"resolution_time_millis": NullInt64ToInt(m.ResolutionTimeMillis),
+				"resolved_ip_addresses":  RawMessageToString(m.ResolvedIpAddresses),
+			})
+		}
+	} else if metric == "web" {
+		list, err := h.db.ListWebMeasurements(r.Context(), db.ListWebMeasurementsParams{
+			Limit:         limit,
+			Offset:        (pageNum - 1) * limit,
+			FromTimestamp: time.Time{}, // Get all time
+			ToTimestamp:   time.Now(),
+		})
+		if err != nil {
+			writeJSONError(w, http.StatusInternalServerError, "Failed to export web measurements")
+			return
+		}
+
+		labels = []string{
+			"timestamp",
+			"device_id",
+			"success",
+			"error_message",
+			"url",
+			"loading_time_millis",
+			"response_code",
+			"page_size_bytes",
+		}
+
+		for _, m := range list {
+			values = append(values, map[string]interface{}{
+				"timestamp":           m.Timestamp,
+				"device_id":           m.DeviceID,
+				"success":             m.Success,
+				"error_message":       NullStringToString(m.ErrorMessage),
+				"url":                 m.Url,
+				"loading_time_millis": NullInt64ToInt(m.LoadingTimeMillis),
+				"response_code":       NullInt32ToInt(m.ResponseCode),
+				"page_size_bytes":     NullInt64ToInt(m.PageSizeBytes),
+			})
+		}
+	} else if metric == "sms" {
+		list, err := h.db.ListSmsMeasurements(r.Context(), db.ListSmsMeasurementsParams{
+			Limit:         limit,
+			Offset:        (pageNum - 1) * limit,
+			FromTimestamp: time.Time{}, // Get all time
+			ToTimestamp:   time.Now(),
+		})
+		if err != nil {
+			writeJSONError(w, http.StatusInternalServerError, "Failed to export sms measurements")
+			return
+		}
+
+		labels = []string{
+			"timestamp",
+			"device_id",
+			"success",
+			"error_message",
+			"destination_address",
+			"submission_time_millis",
+			"delivery_time_millis",
+			"duration_millis",
+		}
+
+		for _, m := range list {
+			values = append(values, map[string]interface{}{
+				"timestamp":              m.Timestamp,
+				"device_id":              m.DeviceID,
+				"success":                m.Success,
+				"error_message":          NullStringToString(m.ErrorMessage),
+				"destination_address":    m.DestinationAddress,
+				"submission_time_millis": NullInt64ToInt(m.SubmissionTimeMillis),
+				"delivery_time_millis":   NullInt64ToInt(m.DeliveryTimeMillis),
+				"duration_millis":        NullInt64ToInt(m.DurationMillis),
+			})
+		}
+	}
+
 	// Set headers for CSV download
 	w.Header().Set("Content-Type", "text/csv")
-	w.Header().Set("Content-Disposition", "attachment; filename=telemetry_data.csv")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s_measurements.csv", metric))
 
 	// Create CSV writer
 	csvWriter := csv.NewWriter(w)
 	defer csvWriter.Flush()
 
-	// Write CSV header
-	headers := []string{
-		"Timestamp", "Device ID", "Test Type", "Success", "Latitude", "Longitude",
-		"Cellular Technology", "Network Operator", "MCCMNC", "LAC", "RAC", "TAC",
-		"Cell ID", "ARFCN", "Signal Strength", "Signal Quality",
-		"Test Details", "Additional Parameters",
-	}
-	if err := csvWriter.Write(headers); err != nil {
+	// Write header
+	if err := csvWriter.Write(labels); err != nil {
 		writeJSONError(w, http.StatusInternalServerError, "Failed to write CSV header")
 		return
 	}
 
-	// Query all measurements
-	measurements, err := h.db.ListMeasurements(r.Context(), db.ListMeasurementsParams{
-		Limit:         10000,
-		Offset:        0,
-		FromTimestamp: time.Now().Add(-100 * 24 * time.Hour),
-		ToTimestamp:   time.Now(),
-	})
-	if err != nil {
-		writeJSONError(w, http.StatusInternalServerError, "Failed to query measurements")
-		return
-	}
-
-	// Write each measurement as a CSV row
-	for _, m := range measurements {
-		// Convert additional parameters to string
-		additionalParams := ""
-		if m.AdditionalParams != nil {
-			additionalParams = string(m.AdditionalParams)
+	// Write data rows
+	for _, row := range values {
+		var csvRow []string
+		for _, label := range labels {
+			value := row[label]
+			var strValue string
+			switch v := value.(type) {
+			case time.Time:
+				strValue = v.Format(time.RFC3339)
+			case nil:
+				strValue = ""
+			default:
+				strValue = fmt.Sprintf("%v", v)
+			}
+			csvRow = append(csvRow, strValue)
 		}
-
-		// Format network metadata
-		networkMeta := fmt.Sprintf("Tech: %s, Operator: %s, MCCMNC: %s",
-			getStringValue(m.CellularTechnology),
-			getStringValue(m.NetworkOperatorName),
-			getStringValue(m.NetworkOperatorMccmnc),
-		)
-
-		// Create CSV row
-		row := []string{
-			m.Timestamp.Format(time.RFC3339),
-			m.DeviceID,
-			"Network Measurement", // Test type
-			"true",                // Success
-			getStringValue(m.Latitude),
-			getStringValue(m.Longitude),
-			getStringValue(m.CellularTechnology),
-			getStringValue(m.NetworkOperatorName),
-			getStringValue(m.NetworkOperatorMccmnc),
-			getInt32Value(m.Lac),
-			getInt32Value(m.Rac),
-			getInt32Value(m.Tac),
-			getInt64Value(m.CellID),
-			getInt32Value(m.Arfcn),
-			getInt32Value(m.SignalStrength),
-			getInt32Value(m.SignalQuality),
-			networkMeta,
-			additionalParams,
-		}
-
-		if err := csvWriter.Write(row); err != nil {
+		if err := csvWriter.Write(csvRow); err != nil {
 			writeJSONError(w, http.StatusInternalServerError, "Failed to write CSV row")
 			return
 		}
