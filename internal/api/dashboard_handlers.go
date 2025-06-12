@@ -370,13 +370,22 @@ func (h *Handler) GetNetworkDistributionHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
+	sum := 0.0
+
+	for _, v := range distribution {
+		sum += float64(v.CellularTechnologyCount)
+	}
+
+	if sum == 0 {
+		sum += 0.1
+	}
+
 	var labels []string
 	var values []float64
 
 	for _, d := range distribution {
-		percentageFloat, _ := strconv.ParseFloat(d.Percentage, 64)
 		labels = append(labels, d.CellularTechnology.String)
-		values = append(values, percentageFloat)
+		values = append(values, float64(d.CellularTechnologyCount)/sum)
 	}
 
 	w.Header().Set("Content-Type", "application/json")

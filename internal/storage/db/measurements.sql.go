@@ -486,8 +486,7 @@ func (q *Queries) GetMapData(ctx context.Context, arg GetMapDataParams) ([]Netwo
 
 const getNetworkTechnologyDistribution = `-- name: GetNetworkTechnologyDistribution :many
 SELECT 
-    cellular_technology,
-    CAST(COUNT(cellular_technology) * 100.0 / COUNT(*) AS DECIMAL(10,2)) as percentage
+    cellular_technology, COUNT(cellular_technology) as cellular_technology_count
 FROM network_measurements
 WHERE timestamp BETWEEN ? AND ? 
 GROUP BY cellular_technology
@@ -499,8 +498,8 @@ type GetNetworkTechnologyDistributionParams struct {
 }
 
 type GetNetworkTechnologyDistributionRow struct {
-	CellularTechnology sql.NullString `json:"cellular_technology"`
-	Percentage         string         `json:"percentage"`
+	CellularTechnology      sql.NullString `json:"cellular_technology"`
+	CellularTechnologyCount int64          `json:"cellular_technology_count"`
 }
 
 func (q *Queries) GetNetworkTechnologyDistribution(ctx context.Context, arg GetNetworkTechnologyDistributionParams) ([]GetNetworkTechnologyDistributionRow, error) {
@@ -512,7 +511,7 @@ func (q *Queries) GetNetworkTechnologyDistribution(ctx context.Context, arg GetN
 	items := []GetNetworkTechnologyDistributionRow{}
 	for rows.Next() {
 		var i GetNetworkTechnologyDistributionRow
-		if err := rows.Scan(&i.CellularTechnology, &i.Percentage); err != nil {
+		if err := rows.Scan(&i.CellularTechnology, &i.CellularTechnologyCount); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
