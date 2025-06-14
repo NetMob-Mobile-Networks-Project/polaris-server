@@ -1,4 +1,4 @@
-FROM golang:1.24-alpine
+FROM registry.docker.ir/golang:1.24-alpine
 
 WORKDIR /app
 
