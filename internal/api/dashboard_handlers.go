@@ -782,3 +782,126 @@ func (h *Handler) GetDetailedListMetricsHandler(w http.ResponseWriter, r *http.R
 		},
 	})
 }
+
+// Helper function to classify signal strength
+func getSignalStrengthClass(strength float64) string {
+	switch {
+	case strength >= -79:
+		return "Excellent"
+	case strength >= -89:
+		return "Good"
+	case strength >= -99:
+		return "Fair"
+	case strength >= -109:
+		return "Poor"
+	default:
+		return "Very Poor/No Signal"
+	}
+}
+
+// Helper function to classify signal quality
+func getSignalQualityClass(quality float64) string {
+	switch {
+	case quality >= -9:
+		return "Excellent"
+	case quality >= -14:
+		return "Good"
+	case quality >= -19:
+		return "Fair"
+	default:
+		return "Poor"
+	}
+}
+
+func (h *Handler) GetRegionListHandler(w http.ResponseWriter, r *http.Request) {
+	// Predefined regions with their bounding boxes
+	regions := []struct {
+		name    string
+		minLat  float64
+		maxLat  float64
+		minLong float64
+		maxLong float64
+	}{
+		{
+			name:    "Tehran North",
+			minLat:  35.7892, // North of Tehran center
+			maxLat:  36.0892,
+			minLong: 51.1890, // West of Tehran center
+			maxLong: 51.5890,
+		},
+		{
+			name:    "Tehran South",
+			minLat:  35.2892, // South of Tehran center
+			maxLat:  35.5892,
+			minLong: 51.1890,
+			maxLong: 51.5890,
+		},
+		{
+			name:    "Tehran East",
+			minLat:  35.4892,
+			maxLat:  35.8892,
+			minLong: 51.4890, // East of Tehran center
+			maxLong: 51.8890,
+		},
+		{
+			name:    "Tehran West",
+			minLat:  35.4892,
+			maxLat:  35.8892,
+			minLong: 50.8890, // West of Tehran center
+			maxLong: 51.2890,
+		},
+	}
+
+	var regionStats []map[string]interface{}
+
+	for _, region := range regions {
+		measurements, err := h.db.GetMapData(r.Context(), db.GetMapDataParams{
+			FromLatitude:  sql.NullString{String: fmt.Sprintf("%f", region.minLat), Valid: true},
+			ToLatitude:    sql.NullString{String: fmt.Sprintf("%f", region.maxLat), Valid: true},
+			FromLongitude: sql.NullString{String: fmt.Sprintf("%f", region.minLong), Valid: true},
+			ToLongitude:   sql.NullString{String: fmt.Sprintf("%f", region.maxLong), Valid: true},
+		})
+		if err != nil {
+			writeJSONError(w, http.StatusInternalServerError, fmt.Sprintf("Failed to get map data: %v", err))
+			return
+		}
+
+		// Calculate averages
+		var totalSignalStrength, totalSignalQuality int64
+		var count int64
+
+		for _, m := range measurements {
+			if m.SignalStrength.Valid {
+				totalSignalStrength += int64(m.SignalStrength.Int32)
+				count++
+			}
+			if m.SignalQuality.Valid {
+				totalSignalQuality += int64(m.SignalQuality.Int32)
+			}
+		}
+
+		var avgSignalStrength, avgSignalQuality float64
+		if count > 0 {
+			avgSignalStrength = float64(totalSignalStrength) / float64(count)
+			avgSignalQuality = float64(totalSignalQuality) / float64(count)
+		}
+
+		regionStats = append(regionStats, map[string]interface{}{
+			"name":              region.name,
+			"average_strength":  avgSignalStrength,
+			"average_quality":   avgSignalQuality,
+			"measurement_count": count,
+			"strength_class":    getSignalStrengthClass(avgSignalStrength),
+			"quality_class":     getSignalQualityClass(avgSignalQuality),
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(Response{
+		Success: true,
+		Message: "Region statistics",
+		Data: map[string]interface{}{
+			"regions": regionStats,
+		},
+	})
+}

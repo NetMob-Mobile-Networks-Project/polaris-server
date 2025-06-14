@@ -59,6 +59,7 @@ func (h *Handler) RegisterRoutes(router *mux.Router) {
 	protected.HandleFunc("/metrics/network-distribution", h.GetNetworkDistributionHandler).Methods("GET")
 	protected.HandleFunc("/metrics/map-data", h.GetMapDataHandler).Methods("GET")
 	protected.HandleFunc("/metrics/detailed-list", h.GetDetailedListMetricsHandler).Methods("GET")
+	protected.HandleFunc("/metrics/region-list", h.GetRegionListHandler).Methods("GET")
 
 	// Export APIs
 	protected.HandleFunc("/export/csv", h.ExportCSVHandler).Methods("GET")
