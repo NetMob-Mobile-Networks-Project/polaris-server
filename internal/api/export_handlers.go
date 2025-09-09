@@ -16,6 +16,20 @@ import (
 func (h *Handler) ExportCSVHandler(w http.ResponseWriter, r *http.Request) {
 	metric := r.URL.Query().Get("metric")
 
+	startQuery := r.URL.Query().Get("start")
+
+	start := time.Now()
+
+	if startQuery == "last-hour" {
+		start = time.Now().Add(-1 * time.Hour)
+	} else if startQuery == "last-day" {
+		start = time.Now().Add(-24 * time.Hour)
+	} else if startQuery == "last-week" {
+		start = time.Now().Add(-7 * 24 * time.Hour)
+	} else if startQuery == "last-month" {
+		start = time.Now().Add(-30 * 24 * time.Hour)
+	}
+
 	var allMetrics map[string]bool = map[string]bool{
 		"network": true,
 		"ping":    true,
@@ -41,7 +55,7 @@ func (h *Handler) ExportCSVHandler(w http.ResponseWriter, r *http.Request) {
 		list, err := h.db.ListMeasurements(r.Context(), db.ListMeasurementsParams{
 			Limit:         limit,
 			Offset:        (pageNum - 1) * limit,
-			FromTimestamp: time.Time{}, // Get all time
+			FromTimestamp: start,
 			ToTimestamp:   time.Now(),
 		})
 		if err != nil {
@@ -90,7 +104,7 @@ func (h *Handler) ExportCSVHandler(w http.ResponseWriter, r *http.Request) {
 		list, err := h.db.ListPingMeasurements(r.Context(), db.ListPingMeasurementsParams{
 			Limit:         limit,
 			Offset:        (pageNum - 1) * limit,
-			FromTimestamp: time.Time{}, // Get all time
+			FromTimestamp: start,
 			ToTimestamp:   time.Now(),
 		})
 		if err != nil {
@@ -131,7 +145,7 @@ func (h *Handler) ExportCSVHandler(w http.ResponseWriter, r *http.Request) {
 		list, err := h.db.ListHttpMeasurements(r.Context(), db.ListHttpMeasurementsParams{
 			Limit:         limit,
 			Offset:        (pageNum - 1) * limit,
-			FromTimestamp: time.Time{}, // Get all time
+			FromTimestamp: start,
 			ToTimestamp:   time.Now(),
 		})
 		if err != nil {
@@ -168,7 +182,7 @@ func (h *Handler) ExportCSVHandler(w http.ResponseWriter, r *http.Request) {
 		list, err := h.db.ListDnsMeasurements(r.Context(), db.ListDnsMeasurementsParams{
 			Limit:         limit,
 			Offset:        (pageNum - 1) * limit,
-			FromTimestamp: time.Time{}, // Get all time
+			FromTimestamp: start,
 			ToTimestamp:   time.Now(),
 		})
 		if err != nil {
@@ -201,7 +215,7 @@ func (h *Handler) ExportCSVHandler(w http.ResponseWriter, r *http.Request) {
 		list, err := h.db.ListWebMeasurements(r.Context(), db.ListWebMeasurementsParams{
 			Limit:         limit,
 			Offset:        (pageNum - 1) * limit,
-			FromTimestamp: time.Time{}, // Get all time
+			FromTimestamp: start,
 			ToTimestamp:   time.Now(),
 		})
 		if err != nil {
@@ -236,7 +250,7 @@ func (h *Handler) ExportCSVHandler(w http.ResponseWriter, r *http.Request) {
 		list, err := h.db.ListSmsMeasurements(r.Context(), db.ListSmsMeasurementsParams{
 			Limit:         limit,
 			Offset:        (pageNum - 1) * limit,
-			FromTimestamp: time.Time{}, // Get all time
+			FromTimestamp: start,
 			ToTimestamp:   time.Now(),
 		})
 		if err != nil {
